@@ -29,6 +29,19 @@ import {SidebarControls} from "@/components/sidebar/sidebar-controls";
 
 const COLLAPSE_KEY = "admin_sidebar_collapsed"
 
+function normalizePath(path: string) {
+    const clean = path.split("?")[0]?.split("#")[0] ?? path;
+    const trimmed = clean.replace(/\/+$/, "");
+    return trimmed || "/";
+}
+
+function stripLocalePrefix(path: string, locale: string) {
+    if (path === `/${locale}`) return "/";
+    const prefix = `/${locale}/`;
+    if (path.startsWith(prefix)) return `/${path.slice(prefix.length)}`;
+    return path;
+}
+
 export function AdminSidebar({
                                  onLogout,
                                  role,
@@ -57,12 +70,12 @@ export function AdminSidebar({
     }
 
     const menu = [
-        { label: "Dashboard", href: `/${locale}/admin/dashboard`, icon: LayoutDashboard, roles: ["SUPER_ADMIN", "SCHOOL_ADMIN", "TEACHER", "FINANCE"] as Role[] },
+        { label: "Dashboard", href: `/${locale}/admin/dashboard`, icon: LayoutDashboard, roles: ["SUPER_ADMIN", "SCHOOL_ADMIN", "TEACHER", "ACCOUNTANT"] as Role[] },
         { label: "Schools", href: `/${locale}/admin/tenants`, icon: School, roles: ["SUPER_ADMIN"] as Role[] },
         { label: "Users", href: `/${locale}/admin/users`, icon: Users, roles: ["SUPER_ADMIN", "SCHOOL_ADMIN"] as Role[] },
         { label: "Attendance", href: `/${locale}/admin/attendance`, icon: ClipboardCheck, roles: ["SUPER_ADMIN", "SCHOOL_ADMIN", "TEACHER"] as Role[] },
-        { label: "Billing", href: `/${locale}/admin/billing`, icon: CreditCard, roles: ["SUPER_ADMIN", "SCHOOL_ADMIN", "FINANCE"] as Role[] },
-        { label: "Reports", href: `/${locale}/admin/reports`, icon: BarChart3, roles: ["SUPER_ADMIN", "SCHOOL_ADMIN", "FINANCE"] as Role[] },
+        { label: "Billing", href: `/${locale}/admin/billing`, icon: CreditCard, roles: ["SUPER_ADMIN", "SCHOOL_ADMIN", "ACCOUNTANT"] as Role[] },
+        { label: "Reports", href: `/${locale}/admin/reports`, icon: BarChart3, roles: ["SUPER_ADMIN", "SCHOOL_ADMIN", "ACCOUNTANT"] as Role[] },
         { label: "Settings", href: `/${locale}/admin/settings`, icon: Settings, roles: ["SUPER_ADMIN", "SCHOOL_ADMIN"] as Role[] },
     ]
 
@@ -140,10 +153,13 @@ export function AdminSidebar({
                         const Icon = item.icon
 
                         // active match: exact for dashboard, prefix for others
+                        const currentPath = normalizePath(pathname);
+                        const targetPath = normalizePath(stripLocalePrefix(item.href, locale));
+
                         const active =
-                            item.href === `/${locale}/admin/dashboard`
-                                ? pathname === item.href
-                                : pathname === item.href || pathname.startsWith(item.href + "/")
+                            targetPath === "/admin/dashboard"
+                                ? currentPath === targetPath
+                                : currentPath === targetPath || currentPath.startsWith(targetPath + "/")
 
                         const base = cn(
                             "flex items-center rounded-lg text-sm transition",

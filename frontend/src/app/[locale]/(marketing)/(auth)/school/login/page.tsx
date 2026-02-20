@@ -13,36 +13,17 @@ import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import {useSchoolLogin} from "@/features/school-auth/hooks/useSchoolAuth";
 import {LandingHeaderControls} from "@/components/marketing/landing-header-controls";
-
-// ✅ Wire these when ready
-// import { useSchoolLogin } from "@/features/school-auth/hooks/useSchoolAuth"
-// import { useSchoolAuthStore } from "@/lib/stores/useSchoolAuthStore"
-
-type LoginLike = {
-    isPending: boolean
-    isError: boolean
-    error: null | Error
-    mutateAsync?: (payload: { email: string; password: string }) => Promise<any>
-}
+import { useSchoolAuthStore } from "@/lib/stores/useSchoolAuthStore";
 
 export default function SchoolLoginPage() {
     const router = useRouter()
     const locale = useLocale()
 
-    // ✅ Replace these placeholders with your real store
-    // const hydrated = useSchoolAuthStore((s) => s.hydrated)
-    // const token = useSchoolAuthStore((s) => s.token)
-    // const setTenantSlug = useSchoolAuthStore((s) => s.setTenantSlug)
-    // const setToken = useSchoolAuthStore((s) => s.setToken)
+    const hydrated = useSchoolAuthStore((s) => s.hydrated)
+    const token = useSchoolAuthStore((s) => s.token)
+    const setTenantSlug = useSchoolAuthStore((s) => s.setTenantSlug)
 
-    const hydrated = true
-    const token = null
-    const setTenantSlug = (v: string) => v
-    const setToken = (v: string) => v
-
-    // ✅ Replace with your real mutation
     const login = useSchoolLogin()
-    // const login: LoginLike = { isPending: false, isError: false, error: null }
 
     const [tenant, setTenant] = useState("")
     const [email, setEmail] = useState("")
@@ -88,9 +69,6 @@ export default function SchoolLoginPage() {
                 password: normalized.password,
             })
 
-            // Expected backend response: { accessToken, mustChangePassword, ... }
-            if (data?.accessToken) setToken(data.accessToken)
-
             if (data?.mustChangePassword) router.replace(changePasswordHref)
             else router.replace(dashboardHref)
             return
@@ -98,7 +76,7 @@ export default function SchoolLoginPage() {
 
         // Placeholder fallback: route only
         router.replace(dashboardHref)
-    }, [canSubmit, normalized, login, router, dashboardHref, changePasswordHref, setTenantSlug, setToken])
+    }, [canSubmit, normalized, login, router, dashboardHref, changePasswordHref, setTenantSlug])
 
     const onEnterSubmit = useCallback(
         (e: React.KeyboardEvent<HTMLInputElement>) => {

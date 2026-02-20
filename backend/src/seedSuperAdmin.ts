@@ -1,5 +1,5 @@
 import {connectDB} from "./core/db";
-import {SuperAdminModel} from "./modules/super-admin/superAdmin.model";
+import {SuperAdminModel} from "./modules/super-admin/model/superAdmin.model";
 import {hashPassword} from "./utils/password";
 
 async function run() {

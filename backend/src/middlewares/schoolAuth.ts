@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import { Types } from "mongoose";
 import {verifySchoolAccessToken} from "../utils/jwt";
+import { sendError } from "../core/apiResponse";
 
 declare global {
     namespace Express {
@@ -13,7 +14,7 @@ declare global {
 export function schoolAuth(req: Request, res: Response, next: NextFunction) {
     const auth = req.header("Authorization") || "";
     const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
-    if (!token) return res.status(401).json({ error: "Missing token" });
+    if (!token) return sendError(res, 401, "Missing token");
 
     try {
         const decoded = verifySchoolAccessToken(token);
@@ -24,6 +25,6 @@ export function schoolAuth(req: Request, res: Response, next: NextFunction) {
         };
         next();
     } catch {
-        return res.status(401).json({ error: "Invalid token" });
+        return sendError(res, 401, "Invalid token");
     }
 }

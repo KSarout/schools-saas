@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { useLocale } from "next-intl"
 import { Menu } from "lucide-react"
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
 
@@ -13,21 +12,20 @@ import { SchoolSidebar } from "@/components/school/school-sidebar"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { useRouter } from "@/i18n/navigation"
-import {useSchoolAuthStore} from "@/lib/stores/useSchoolAuthStore";
+import { useSchoolLogout } from "@/features/school-auth/hooks/useSchoolAuth"
 
 export default function SchoolDashboardLayout({ children }: { children: React.ReactNode }) {
     const router = useRouter()
-    const locale = useLocale()
 
     const [open, setOpen] = React.useState(false)
 
-    const logout = useSchoolAuthStore((s) => s.logout)
+    const logoutMut = useSchoolLogout()
     const me = useSchoolMe()
     const role: Role = (me.data?.user?.role as Role) ?? "SCHOOL_ADMIN"
 
     const handleLogout = () => {
-        logout()
-        router.replace(`/${locale}/school/login`)
+        logoutMut.mutate()
+        router.replace("/school/login")
     }
 
     return (

@@ -17,6 +17,7 @@ export type SchoolTenant = {
 
 export type LoginPayload = {
     token: string;
+    refreshToken: string;
     tenantSlug: string;
     user?: SchoolUser;
     tenant?: SchoolTenant;
@@ -26,6 +27,7 @@ export type SchoolAuthState = {
     hydrated: boolean;
 
     token: string | null;
+    refreshToken: string | null;
     tenantSlug: string | null;
 
     user: SchoolUser | null;
@@ -34,6 +36,7 @@ export type SchoolAuthState = {
     setHydrated: () => void;
 
     setToken: (token: string | null) => void;
+    setRefreshToken: (token: string | null) => void;
     setTenantSlug: (slug: string | null) => void;
 
     login: (payload: LoginPayload) => void;
@@ -46,10 +49,11 @@ function normalizeTenantSlug(slug: string) {
 
 export const useSchoolAuthStore = create<SchoolAuthState>()(
     persist(
-        (set, get) => ({
+        (set) => ({
             hydrated: false,
 
             token: null,
+            refreshToken: null,
             tenantSlug: null,
 
             user: null,
@@ -58,21 +62,27 @@ export const useSchoolAuthStore = create<SchoolAuthState>()(
             setHydrated: () => set({ hydrated: true }),
 
             setToken: (token) =>
-                set((s) => ({
+                set({
                     token,
                     // enterprise: if token is cleared, also clear cached identity
-                    ...(token ? null : { user: null, tenant: null }),
-                })),
+                    ...(token ? null : { refreshToken: null, user: null, tenant: null }),
+                }),
+
+            setRefreshToken: (refreshToken) =>
+                set({
+                    refreshToken,
+                }),
 
             setTenantSlug: (slug) =>
                 set({
                     tenantSlug: slug ? normalizeTenantSlug(slug) : null,
                 }),
 
-            login: ({ token, tenantSlug, user, tenant }) =>
+            login: ({ token, refreshToken, tenantSlug, user, tenant }) =>
                 set({
                     hydrated: true, // makes login UX immediate
                     token,
+                    refreshToken,
                     tenantSlug: normalizeTenantSlug(tenantSlug),
                     user: user ?? null,
                     tenant: tenant ?? null,
@@ -81,6 +91,7 @@ export const useSchoolAuthStore = create<SchoolAuthState>()(
             logout: () =>
                 set({
                     token: null,
+                    refreshToken: null,
                     tenantSlug: null,
                     user: null,
                     tenant: null,
@@ -90,6 +101,7 @@ export const useSchoolAuthStore = create<SchoolAuthState>()(
             name: "school-auth",
             partialize: (s) => ({
                 token: s.token,
+                refreshToken: s.refreshToken,
                 tenantSlug: s.tenantSlug,
                 user: s.user,
                 tenant: s.tenant,

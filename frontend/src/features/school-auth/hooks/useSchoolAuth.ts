@@ -3,7 +3,9 @@ import { useSchoolAuthStore } from "@/lib/stores/useSchoolAuthStore";
 import {
     changePassword,
     schoolLogin,
+    schoolLogout,
     schoolMe,
+    schoolRefresh,
     type SchoolLoginInput,
     type SchoolMeResponse,
 } from "@/features/school-auth/api/schoolAuth.api";
@@ -23,6 +25,7 @@ export function useSchoolLogin() {
             // ✅ single source of truth: backend tenant slug
             useSchoolAuthStore.getState().login({
                 token: data.accessToken,
+                refreshToken: data.refreshToken,
                 tenantSlug: data.tenant.slug,
                 user: data.user,
                 tenant: data.tenant,
@@ -63,4 +66,28 @@ export function useChangePassword() {
             await qc.invalidateQueries({ queryKey: schoolAuthKeys.me() });
         },
     });
+}
+
+export function useSchoolLogout() {
+    return useMutation({
+        mutationFn: async () => {
+            const { refreshToken } = useSchoolAuthStore.getState();
+            if (refreshToken) {
+                await schoolLogout(refreshToken);
+            }
+        },
+        onSettled: () => {
+            useSchoolAuthStore.getState().logout();
+        },
+    });
+}
+
+export async function refreshSchoolSession() {
+    const state = useSchoolAuthStore.getState();
+    if (!state.refreshToken) return null;
+
+    const tokens = await schoolRefresh(state.refreshToken);
+    useSchoolAuthStore.getState().setToken(tokens.accessToken);
+    useSchoolAuthStore.getState().setRefreshToken(tokens.refreshToken);
+    return tokens.accessToken;
 }

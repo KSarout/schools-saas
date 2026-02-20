@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { useLocale } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { usePathname } from "@/i18n/navigation"
 
 import { cn } from "@/lib/utils"
@@ -34,6 +34,7 @@ import {
 
 type MenuItem = {
     label: string
+    labelKey?: string
     href: (locale: string) => string
     icon: React.ComponentType<{ className?: string }>
     roles: Role[]
@@ -42,12 +43,25 @@ type MenuItem = {
 
 const COLLAPSE_KEY = "school_sidebar_collapsed"
 
+function normalizePath(path: string) {
+    const clean = path.split("?")[0]?.split("#")[0] ?? path;
+    const trimmed = clean.replace(/\/+$/, "");
+    return trimmed || "/";
+}
+
+function stripLocalePrefix(path: string, locale: string) {
+    if (path === `/${locale}`) return "/";
+    const prefix = `/${locale}/`;
+    if (path.startsWith(prefix)) return `/${path.slice(prefix.length)}`;
+    return path;
+}
+
 const MENU: MenuItem[] = [
     {
         label: "Dashboard",
         href: (l) => `/${l}/school/dashboard`,
         icon: LayoutDashboard,
-        roles: ["SCHOOL_ADMIN", "TEACHER", "FINANCE"],
+        roles: ["SCHOOL_ADMIN", "TEACHER", "ACCOUNTANT"],
         match: "exact",
     },
     {
@@ -82,14 +96,22 @@ const MENU: MenuItem[] = [
         label: "Fees",
         href: (l) => `/${l}/school/dashboard/fees`,
         icon: Receipt,
-        roles: ["SCHOOL_ADMIN", "FINANCE"],
+        roles: ["SCHOOL_ADMIN", "ACCOUNTANT"],
         match: "prefix",
     },
     {
         label: "Reports",
         href: (l) => `/${l}/school/dashboard/reports`,
         icon: BarChart3,
-        roles: ["SCHOOL_ADMIN", "FINANCE"],
+        roles: ["SCHOOL_ADMIN", "ACCOUNTANT"],
+        match: "prefix",
+    },
+    {
+        label: "Users",
+        labelKey: "school.users.pageTitle",
+        href: (l) => `/${l}/school/settings/users`,
+        icon: ShieldCheck,
+        roles: ["SCHOOL_ADMIN", "ACCOUNTANT", "TEACHER"],
         match: "prefix",
     },
 ]
@@ -109,6 +131,7 @@ export function SchoolSidebar({
     const isDrawer = variant === "drawer"
 
     const locale = useLocale()
+    const t = useTranslations()
     const pathname = usePathname()
 
     const [collapsed, setCollapsed] = React.useState(false)
@@ -185,12 +208,14 @@ export function SchoolSidebar({
                 <nav className={cn("flex-1 overflow-y-auto px-3", collapsed ? "py-1 space-y-1" : "space-y-1")}>
                     {filtered.map((item) => {
                         const href = item.href(locale)
-                        const clean = pathname.replace(/\/$/, "")
+                        const label = item.labelKey ? t(item.labelKey) : item.label
+                        const currentPath = normalizePath(pathname)
+                        const targetPath = normalizePath(stripLocalePrefix(href, locale))
 
                         const active =
                             item.match === "exact"
-                                ? clean === href
-                                : clean === href || clean.startsWith(href + "/")
+                                ? currentPath === targetPath
+                                : currentPath === targetPath || currentPath.startsWith(targetPath + "/")
 
                         const Icon = item.icon
 
@@ -209,7 +234,7 @@ export function SchoolSidebar({
                                 )}
                             >
                                 <Icon className="h-4 w-4 shrink-0" />
-                                {!collapsed && <span className="truncate">{item.label}</span>}
+                                {!collapsed && <span className="truncate">{label}</span>}
                             </Link>
                         )
 
@@ -217,7 +242,7 @@ export function SchoolSidebar({
                             return (
                                 <Tooltip key={href}>
                                     <TooltipTrigger asChild>{link}</TooltipTrigger>
-                                    <TooltipContent side="right">{item.label}</TooltipContent>
+                                    <TooltipContent side="right">{label}</TooltipContent>
                                 </Tooltip>
                             )
                         }

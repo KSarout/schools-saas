@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { listResponseSchema } from "@/lib/schemas/listResponse";
 
 /** <input type="date"> returns "YYYY-MM-DD" */
 const DateInputString = z
@@ -58,11 +59,5 @@ export const Student = z.object({
 });
 export type Student = z.infer<typeof Student>;
 
-export const ListStudentsResponse = z.object({
-    items: z.array(Student),
-    total: z.number(),
-    page: z.number(),
-    limit: z.number(),
-    totalPages: z.number(),
-});
+export const ListStudentsResponse = listResponseSchema(Student);
 export type ListStudentsResponse = z.infer<typeof ListStudentsResponse>;

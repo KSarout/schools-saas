@@ -23,6 +23,7 @@ export const SchoolTenantSchema = z.object({
 
 export const SchoolLoginResponseSchema = z.object({
     accessToken: z.string(),
+    refreshToken: z.string(),
     mustChangePassword: z.boolean(),
     user: SchoolUserSchema,
     tenant: SchoolTenantSchema,
@@ -36,6 +37,10 @@ export const SchoolMeResponseSchema = z.object({
 });
 
 export const OkSchema = z.object({ ok: z.literal(true) });
+export const TokenPairSchema = z.object({
+    accessToken: z.string(),
+    refreshToken: z.string(),
+});
 
 /* -----------------------------
  * Types
@@ -95,4 +100,12 @@ export async function schoolMe() {
 
 export async function changePassword(input: ChangePasswordInput) {
     return apiPost("/auth/change-password", input, OkSchema);
+}
+
+export async function schoolRefresh(refreshToken: string) {
+    return apiPost("/auth/refresh", { refreshToken }, TokenPairSchema);
+}
+
+export async function schoolLogout(refreshToken: string) {
+    return apiPost("/auth/logout", { refreshToken }, OkSchema);
 }

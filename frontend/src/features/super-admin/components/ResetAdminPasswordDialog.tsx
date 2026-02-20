@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useResetTenantPassword } from "../hooks/useTenants";
 
 import { Button } from "@/components/ui/button";
@@ -25,15 +25,16 @@ export function ResetAdminPasswordDialog({
     const resetMut = useResetTenantPassword();
     const [result, setResult] = useState<null | { adminEmail: string; tempPassword: string }>(null);
 
-    useEffect(() => {
-        if (!open) {
+    function handleOpenChange(nextOpen: boolean) {
+        if (!nextOpen) {
             setResult(null);
             resetMut.reset();
         }
-    }, [open]);
+        onOpenChange(nextOpen);
+    }
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
+        <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Reset School Admin Password</DialogTitle>

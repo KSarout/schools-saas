@@ -43,5 +43,37 @@
     "required": "This field is required",
     "emailInvalid": "Invalid email address",
     "somethingWrong": "Something went wrong"
+  },
+
+  "school": {
+    "users": {
+      "pageTitle": "Users",
+      "subtitle": "Manage school user accounts and access settings.",
+      "searchPlaceholder": "Search name or email...",
+      "createUser": "Create User",
+      "editUser": "Edit User",
+      "resetPassword": "Reset Password",
+      "deactivateUser": "Deactivate User",
+      "confirmDeactivate": "Are you sure you want to deactivate this user?",
+      "confirmReset": "Are you sure you want to reset this password?",
+      "cancel": "Cancel",
+      "save": "Save",
+      "update": "Update",
+      "role": "Role",
+      "status": "Status",
+      "active": "Active",
+      "inactive": "Inactive",
+      "name": "Name",
+      "email": "Email",
+      "passwordGenerated": "Temporary password generated",
+      "copy": "Copy",
+      "copied": "Copied",
+      "tempPasswordHint": "Save this temporary password now. It will not be shown again.",
+      "emptyTitle": "No users found",
+      "emptyDesc": "Try changing search terms or filters.",
+      "loading": "Loading users...",
+      "errorTitle": "Unable to load users",
+      "errorDesc": "Please try again in a moment."
+    }
   }
 }

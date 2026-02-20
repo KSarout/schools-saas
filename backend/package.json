@@ -5,10 +5,14 @@
   "main": "index.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "clean": "rm -rf dist",
     "build": "tsc",
     "start": "node dist/server.js",
     "seed:admin": "ts-node-dev --transpile-only src/seedSuperAdmin.ts",
-    "typecheck": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run clean && npm run build && node --test $(find dist -name \"*.test.js\")",
+    "ci:check": "npm run lint && npm run typecheck && npm run test"
   },
   "keywords": [],
   "author": "",

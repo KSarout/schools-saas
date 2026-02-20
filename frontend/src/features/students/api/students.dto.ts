@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { listResponseSchema } from "@/lib/schemas/listResponse";
 
 export const StudentGender = ["MALE", "FEMALE"] as const;
 export type StudentGender = (typeof StudentGender)[number];
@@ -19,13 +20,7 @@ export const StudentSchema = z.object({
 });
 export type StudentDto = z.infer<typeof StudentSchema>;
 
-export const StudentListResponseSchema = z.object({
-    items: z.array(StudentSchema),
-    total: z.number(),
-    page: z.number(),
-    limit: z.number(),
-    totalPages: z.number(),
-});
+export const StudentListResponseSchema = listResponseSchema(StudentSchema);
 export type StudentListResponse = z.infer<typeof StudentListResponseSchema>;
 
 export const StudentCreateInputSchema = z.object({

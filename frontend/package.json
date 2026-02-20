@@ -4,10 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit --incremental false",
+    "test": "echo \"No frontend tests configured\"",
+    "ci:check": "npm run lint && npm run build && npm run typecheck && npm run test"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

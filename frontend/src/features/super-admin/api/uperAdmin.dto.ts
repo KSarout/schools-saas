@@ -1,4 +1,5 @@
 import {z} from "zod";
+import { listResponseSchema } from "@/lib/schemas/listResponse";
 
 /*
 |--------------------------------------------------------------------------
@@ -48,9 +49,16 @@ export type SuperAdminLoginPayload = z.infer<typeof SuperAdminLoginPayload>;
 
 export const SuperAdminLoginResponse = z.object({
     accessToken: z.string(),
+    refreshToken: z.string(),
     superAdmin: SuperAdmin,
 });
 export type SuperAdminLoginResponse = z.infer<typeof SuperAdminLoginResponse>;
+
+export const SuperAdminTokenPairResponse = z.object({
+    accessToken: z.string(),
+    refreshToken: z.string(),
+});
+export type SuperAdminTokenPairResponse = z.infer<typeof SuperAdminTokenPairResponse>;
 
 export const SuperAdminMeResponse = z.object({
     superAdmin: SuperAdmin,
@@ -70,13 +78,7 @@ export const ListTenantsParams = z.object({
 });
 export type ListTenantsParams = z.infer<typeof ListTenantsParams>;
 
-export const ListTenantsResponse = z.object({
-    items: z.array(TenantListItem),
-    total: z.number(),
-    page: z.number(),
-    limit: z.number(),
-    totalPages: z.number(),
-});
+export const ListTenantsResponse = listResponseSchema(TenantListItem);
 export type ListTenantsResponse = z.infer<typeof ListTenantsResponse>;
 
 export const CreateTenantPayload = z.object({
@@ -115,3 +117,53 @@ export const ResetTenantAdminPasswordResponse = z.object({
 export type ResetTenantAdminPasswordResponse = z.infer<
     typeof ResetTenantAdminPasswordResponse
 >;
+
+export const OkResponse = z.object({
+    ok: z.literal(true),
+});
+
+export const SuperAdminUser = z.object({
+    id: z.string(),
+    name: z.string(),
+    email: z.string().email(),
+    isActive: z.boolean(),
+    createdAt: z.string().optional(),
+    updatedAt: z.string().optional(),
+});
+export type SuperAdminUser = z.infer<typeof SuperAdminUser>;
+
+export const ListSuperAdminUsersParams = z.object({
+    q: z.string().optional(),
+    status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
+    page: z.number().int().positive().optional(),
+    limit: z.number().int().positive().optional(),
+});
+export type ListSuperAdminUsersParams = z.infer<typeof ListSuperAdminUsersParams>;
+
+export const ListSuperAdminUsersResponse = listResponseSchema(SuperAdminUser);
+export type ListSuperAdminUsersResponse = z.infer<typeof ListSuperAdminUsersResponse>;
+
+export const CreateSuperAdminUserPayload = z.object({
+    name: z.string().min(2),
+    email: z.string().email(),
+});
+export type CreateSuperAdminUserPayload = z.infer<typeof CreateSuperAdminUserPayload>;
+
+export const CreateSuperAdminUserResponse = z.object({
+    user: SuperAdminUser,
+    tempPassword: z.string(),
+});
+export type CreateSuperAdminUserResponse = z.infer<typeof CreateSuperAdminUserResponse>;
+
+export const UpdateSuperAdminUserPayload = z.object({
+    name: z.string().min(2).optional(),
+    isActive: z.boolean().optional(),
+}).refine((v) => Object.keys(v).length > 0, { message: "At least one field is required" });
+export type UpdateSuperAdminUserPayload = z.infer<typeof UpdateSuperAdminUserPayload>;
+
+export const ResetSuperAdminUserPasswordResponse = z.object({
+    userId: z.string(),
+    email: z.string().email(),
+    tempPassword: z.string(),
+});
+export type ResetSuperAdminUserPasswordResponse = z.infer<typeof ResetSuperAdminUserPasswordResponse>;

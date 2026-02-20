@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button"
 import { useSuperAdminStore } from "@/lib/stores/superAdminStore"
 import { AdminSidebar } from "@/components/admin/admin-sidebar"
 import type { Role } from "@/lib/rbac"
+import { useSuperAdminLogout } from "@/features/super-admin/hooks/useSuperAdminAuth"
 
 export default function AdminProtectedLayout({ children }: { children: React.ReactNode }) {
     const router = useRouter()
@@ -19,9 +20,9 @@ export default function AdminProtectedLayout({ children }: { children: React.Rea
 
     const hydrated = useSuperAdminStore((s) => s.hydrated)
     const token = useSuperAdminStore((s) => s.token)
-    const logout = useSuperAdminStore((s) => s.logout)
+    const logoutMut = useSuperAdminLogout()
 
-    const role: Role = (useSuperAdminStore((s) => (s as any).role) as Role) ?? "SUPER_ADMIN"
+    const role: Role = "SUPER_ADMIN"
 
     const [open, setOpen] = React.useState(false)
 
@@ -31,7 +32,7 @@ export default function AdminProtectedLayout({ children }: { children: React.Rea
     }, [hydrated, token, router, locale])
 
     const doLogout = () => {
-        logout()
+        logoutMut.mutate()
         router.replace(`/${locale}/admin/login`)
     }
 

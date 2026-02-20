@@ -31,7 +31,7 @@ export function SidebarControls({collapsed}: { collapsed: boolean }) {
     const router = useRouter()
     const pathname = usePathname()
     const locale = useLocale()
-    const {setTheme} = useTheme()
+    const { theme, resolvedTheme, setTheme } = useTheme()
 
     const setLang = (nextLocale: string) => {
         router.replace(pathname, {locale: nextLocale})
@@ -55,7 +55,7 @@ export function SidebarControls({collapsed}: { collapsed: boolean }) {
             <div className="space-y-2 px-3 pb-3">
                 <div className="grid gap-2">
                     <TooltipTriggerWrap label="Theme">
-                        <ThemeIconMenu setTheme={setTheme} />
+                        <ThemeIconMenu theme={theme} resolvedTheme={resolvedTheme} setTheme={setTheme} />
                     </TooltipTriggerWrap>
 
                     <TooltipTriggerWrap label="Language">
@@ -71,7 +71,7 @@ export function SidebarControls({collapsed}: { collapsed: boolean }) {
         <div className="space-y-3 px-3 pb-3">
             <div className="text-xs font-medium text-muted-foreground">Preferences</div>
             <div className="grid grid-cols-2 gap-2">
-                <ThemeTextMenu setTheme={setTheme}/>
+                <ThemeTextMenu theme={theme} resolvedTheme={resolvedTheme} setTheme={setTheme}/>
                 <LangTextMenu locale={locale} setLang={setLang}/>
             </div>
             <Separator/>
@@ -91,7 +91,17 @@ function TooltipTriggerWrap({ label, children }: { label: string; children: Reac
 }
 
 /** Collapsed: icon-only dropdowns */
-function ThemeIconMenu({setTheme}: { setTheme: (t: "light" | "dark" | "system") => void }) {
+function ThemeIconMenu({
+    theme,
+    resolvedTheme,
+    setTheme,
+}: {
+    theme?: string;
+    resolvedTheme?: string;
+    setTheme: (t: "light" | "dark" | "system") => void;
+}) {
+    const themeLabel = theme === "system" ? `System (${resolvedTheme ?? "light"})` : theme;
+
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -101,16 +111,19 @@ function ThemeIconMenu({setTheme}: { setTheme: (t: "light" | "dark" | "system") 
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-44">
-                <DropdownMenuLabel>Theme</DropdownMenuLabel>
+                <DropdownMenuLabel>Theme: {themeLabel}</DropdownMenuLabel>
                 <DropdownMenuSeparator/>
                 <DropdownMenuItem onClick={() => setTheme("light")} className="gap-2">
                     <Sun className="h-4 w-4"/> Light
+                    {theme === "light" ? <Check className="ml-auto h-4 w-4 text-muted-foreground" /> : null}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setTheme("dark")} className="gap-2">
                     <Moon className="h-4 w-4"/> Dark
+                    {theme === "dark" ? <Check className="ml-auto h-4 w-4 text-muted-foreground" /> : null}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setTheme("system")} className="gap-2">
                     <Monitor className="h-4 w-4"/> System
+                    {theme === "system" ? <Check className="ml-auto h-4 w-4 text-muted-foreground" /> : null}
                 </DropdownMenuItem>
             </DropdownMenuContent>
         </DropdownMenu>
@@ -148,7 +161,17 @@ function LangIconMenu({
 }
 
 /** Expanded: compact text buttons (still dropdown behind the scenes) */
-function ThemeTextMenu({setTheme}: { setTheme: (t: "light" | "dark" | "system") => void }) {
+function ThemeTextMenu({
+    theme,
+    resolvedTheme,
+    setTheme,
+}: {
+    theme?: string;
+    resolvedTheme?: string;
+    setTheme: (t: "light" | "dark" | "system") => void;
+}) {
+    const themeLabel = theme === "system" ? `System (${resolvedTheme ?? "light"})` : theme;
+
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -158,16 +181,19 @@ function ThemeTextMenu({setTheme}: { setTheme: (t: "light" | "dark" | "system") 
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-44">
-                <DropdownMenuLabel>Theme</DropdownMenuLabel>
+                <DropdownMenuLabel>Theme: {themeLabel}</DropdownMenuLabel>
                 <DropdownMenuSeparator/>
                 <DropdownMenuItem onClick={() => setTheme("light")} className="gap-2">
                     <Sun className="h-4 w-4"/> Light
+                    {theme === "light" ? <Check className="ml-auto h-4 w-4 text-muted-foreground" /> : null}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setTheme("dark")} className="gap-2">
                     <Moon className="h-4 w-4"/> Dark
+                    {theme === "dark" ? <Check className="ml-auto h-4 w-4 text-muted-foreground" /> : null}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setTheme("system")} className="gap-2">
                     <Monitor className="h-4 w-4"/> System
+                    {theme === "system" ? <Check className="ml-auto h-4 w-4 text-muted-foreground" /> : null}
                 </DropdownMenuItem>
             </DropdownMenuContent>
         </DropdownMenu>
