@@ -1,0 +1,47 @@
+{
+  "Common": {
+    "appName": "ប្រព័ន្ធគ្រប់គ្រងសាលារៀន",
+    "loading": "កំពុងផ្ទុក...",
+    "save": "រក្សាទុក",
+    "cancel": "បោះបង់",
+    "delete": "លុប",
+    "edit": "កែប្រែ",
+    "search": "ស្វែងរក",
+    "confirm": "បញ្ជាក់",
+    "logout": "ចាកចេញ",
+    "language": "ភាសា",
+    "theme": "រចនាបថ"
+  },
+
+  "Navigation": {
+    "dashboard": "ផ្ទាំងគ្រប់គ្រង",
+    "students": "សិស្ស",
+    "teachers": "គ្រូ",
+    "classes": "ថ្នាក់",
+    "settings": "ការកំណត់",
+    "admin": "អ្នកគ្រប់គ្រង"
+  },
+
+  "Auth": {
+    "loginTitle": "ចូលទៅកាន់គណនីរបស់អ្នក",
+    "email": "អ៊ីមែល",
+    "password": "ពាក្យសម្ងាត់",
+    "rememberMe": "ចងចាំខ្ញុំ",
+    "forgotPassword": "ភ្លេចពាក្យសម្ងាត់?",
+    "loginButton": "ចូល",
+    "invalidCredentials": "អ៊ីមែល ឬ ពាក្យសម្ងាត់មិនត្រឹមត្រូវ"
+  },
+
+  "Dashboard": {
+    "welcome": "សូមស្វាគមន៍មកវិញ, {name}!",
+    "totalStudents": "ចំនួនសិស្សសរុប",
+    "totalTeachers": "ចំនួនគ្រូសរុប",
+    "totalClasses": "ចំនួនថ្នាក់សរុប"
+  },
+
+  "Errors": {
+    "required": "ត្រូវបំពេញវាលនេះ",
+    "emailInvalid": "អ៊ីមែលមិនត្រឹមត្រូវ",
+    "somethingWrong": "មានបញ្ហាបានកើតឡើង"
+  }
+}

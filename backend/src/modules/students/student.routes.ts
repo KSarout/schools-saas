@@ -1,28 +1,67 @@
-import { Router } from "express";
-import { z } from "zod";
-import { Student } from "./student.model";
-
-import { schoolAuth } from "../../middlewares/schoolAuth";
-import { requireRole } from "../../middlewares/rbac";
+import {Router} from "express";
+import {z} from "zod";
+import {StudentModel, type StudentDocument} from "./student.model";
+import {schoolAuth} from "../../middlewares/schoolAuth";
+import {requireRole} from "../../middlewares/rbac";
+import {nextSequence} from "../counters/counter.service";
+import {formatStudentCode} from "./studentCode";
 
 export const studentRouter = Router();
 
+studentRouter.use(schoolAuth);
+
+const GenderSchema = z.enum(["MALE", "FEMALE"]);
+const StatusSchema = z.enum(["ACTIVE", "INACTIVE"]);
+
+function escapeRegex(input: string) {
+    return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// Works for both mongoose docs and lean objects
+type StudentLike = StudentDocument | (Record<string, any> & { _id: any });
+
+export function toStudentDto(s: StudentLike) {
+    const id = typeof s._id?.toString === "function" ? s._id.toString() : String(s._id);
+
+    return {
+        id,
+        studentCode: s.studentCode,
+        studentId: s.studentId,
+
+        firstName: s.firstName,
+        lastName: s.lastName,
+        gender: s.gender,
+
+        dateOfBirth: s.dateOfBirth ? new Date(s.dateOfBirth).toISOString() : undefined,
+
+        grade: s.grade,
+        section: s.section,
+
+        parentName: s.parentName ?? undefined,
+        parentPhone: s.parentPhone ?? undefined,
+        address: s.address ?? undefined,
+
+        status: s.status,
+
+        createdAt: s.createdAt ? new Date(s.createdAt).toISOString() : undefined,
+        updatedAt: s.updatedAt ? new Date(s.updatedAt).toISOString() : undefined,
+    };
+}
+
 /*
 |--------------------------------------------------------------------------
-| CREATE STUDENT
+| CREATE
 |--------------------------------------------------------------------------
-| Roles: SCHOOL_ADMIN
 */
 studentRouter.post(
     "/",
-    schoolAuth,
-    requireRole("SCHOOL_ADMIN"),
+    requireRole("SCHOOL_ADMIN", "ACCOUNTANT"),
     async (req, res) => {
         const schema = z.object({
             studentId: z.string().min(1),
             firstName: z.string().min(1),
             lastName: z.string().min(1),
-            gender: z.enum(["MALE", "FEMALE"]),
+            gender: GenderSchema,
             dateOfBirth: z.string().optional(),
             grade: z.string().min(1),
             section: z.string().min(1),
@@ -32,110 +71,99 @@ studentRouter.post(
         });
 
         const parsed = schema.safeParse(req.body);
-        if (!parsed.success)
-            return res.status(400).json({ error: "Invalid input" });
+        if (!parsed.success) return res.status(400).json({ error: "Invalid input" });
 
         const tenantId = req.user!.tenantId;
 
-        type CreateStudentInput = {
-            tenantId: string;
-            studentId: string;
-            firstName: string;
-            lastName: string;
-            gender: "MALE" | "FEMALE";
-            grade: string;
-            section: string;
-            dateOfBirth?: Date;
-            parentName?: string;
-            parentPhone?: string;
-            address?: string;
-        };
+        const year = new Date().getFullYear();
+        const counterKey = `STUDENT:${year}`;
 
-        const studentData: CreateStudentInput = {
-            tenantId,
-            studentId: parsed.data.studentId.trim(),
-            firstName: parsed.data.firstName.trim(),
-            lastName: parsed.data.lastName.trim(),
-            gender: parsed.data.gender,
-            grade: parsed.data.grade.trim(),
-            section: parsed.data.section.trim(),
-        };
+        // retry at most 2 times on duplicate code (extremely rare)
+        for (let attempt = 0; attempt < 2; attempt++) {
+            const seq = await nextSequence(tenantId, counterKey);
+            const studentCode = formatStudentCode(seq, { year });
 
-        if (parsed.data.dateOfBirth) {
-            studentData.dateOfBirth = new Date(parsed.data.dateOfBirth);
+            try {
+                const created = await StudentModel.create({
+                    tenantId,
+                    studentCode,
+                    studentId: parsed.data.studentId.trim(),
+                    firstName: parsed.data.firstName.trim(),
+                    lastName: parsed.data.lastName.trim(),
+                    gender: parsed.data.gender,
+                    dateOfBirth: parsed.data.dateOfBirth ? new Date(parsed.data.dateOfBirth) : undefined,
+                    grade: parsed.data.grade.trim(),
+                    section: parsed.data.section.trim(),
+                    parentName: parsed.data.parentName?.trim() || undefined,
+                    parentPhone: parsed.data.parentPhone?.trim() || undefined,
+                    address: parsed.data.address?.trim() || undefined,
+                    status: "ACTIVE",
+                });
+
+                return res.status(201).json(toStudentDto(created));
+            } catch (err: any) {
+                // Mongo duplicate key error
+                if (err?.code === 11000 && attempt === 0) continue;
+                throw err;
+            }
         }
 
-        if (parsed.data.parentName) {
-            studentData.parentName = parsed.data.parentName.trim();
-        }
-
-        if (parsed.data.parentPhone) {
-            studentData.parentPhone = parsed.data.parentPhone.trim();
-        }
-
-        if (parsed.data.address) {
-            studentData.address = parsed.data.address.trim();
-        }
-
-        const student = await Student.create(studentData);
-
-        return res.json({ student });
+        return res.status(500).json({ error: "Failed to create student" });
     }
 );
 
+
 /*
 |--------------------------------------------------------------------------
-| LIST STUDENTS (Search + Pagination)
+| LIST
 |--------------------------------------------------------------------------
-| Roles: SCHOOL_ADMIN, TEACHER, ACCOUNTANT
 */
 studentRouter.get(
     "/",
-    schoolAuth,
     requireRole("SCHOOL_ADMIN", "TEACHER", "ACCOUNTANT"),
     async (req, res) => {
         const schema = z.object({
             q: z.string().optional(),
-            page: z.string().optional(),
-            limit: z.string().optional(),
-            status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
+            page: z.coerce.number().int().min(1).default(1),
+            limit: z.coerce.number().int().min(1).max(50).default(10),
+            status: StatusSchema.optional(),
         });
 
         const parsed = schema.safeParse(req.query);
-        if (!parsed.success)
-            return res.status(400).json({ error: "Invalid query params" });
+        if (!parsed.success) return res.status(400).json({error: "Invalid query params"});
 
+        const {q, page, limit, status} = parsed.data;
         const tenantId = req.user!.tenantId;
+        const skip = (page - 1) * limit;
 
-        const q = parsed.data.q?.trim() || "";
-        const page = Math.max(1, Number(parsed.data.page || 1));
-        const limit = Math.min(50, Math.max(1, Number(parsed.data.limit || 10)));
+        const filter: Record<string, any> = {
+            tenantId,
+            status: status ?? "ACTIVE",
+        };
 
-        const filter: any = { tenantId };
+        if (q?.trim()) {
+            const s = q.trim();
+            const safe = escapeRegex(s);
 
-        if (parsed.data.status) {
-            filter.status = parsed.data.status;
-        }
-
-        if (q) {
-            filter.$or = [
-                { firstName: { $regex: q, $options: "i" } },
-                { lastName: { $regex: q, $options: "i" } },
-                { studentId: { $regex: q, $options: "i" } },
-                { parentPhone: { $regex: q, $options: "i" } },
-            ];
+            const looksLikeCode = s.toUpperCase().startsWith("STU-");
+            filter.$or = looksLikeCode
+                ? [{studentCode: {$regex: `^${safe}`, $options: "i"}}]
+                : [
+                    {studentCode: {$regex: safe, $options: "i"}},
+                    {studentId: {$regex: safe, $options: "i"}},
+                    {firstName: {$regex: safe, $options: "i"}},
+                    {lastName: {$regex: safe, $options: "i"}},
+                    {parentPhone: {$regex: safe, $options: "i"}},
+                ];
         }
 
         const [items, total] = await Promise.all([
-            Student.find(filter)
-                .sort({ createdAt: -1 })
-                .skip((page - 1) * limit)
-                .limit(limit),
-            Student.countDocuments(filter),
+            StudentModel.find(filter).sort({createdAt: -1}).skip(skip).limit(limit).lean(),
+            StudentModel.countDocuments(filter),
         ]);
 
         return res.json({
-            items,
+            items: items.map(toStudentDto),
             total,
             page,
             limit,
@@ -146,103 +174,99 @@ studentRouter.get(
 
 /*
 |--------------------------------------------------------------------------
-| GET STUDENT BY ID
+| GET BY ID
 |--------------------------------------------------------------------------
 */
 studentRouter.get(
     "/:id",
-    schoolAuth,
     requireRole("SCHOOL_ADMIN", "TEACHER", "ACCOUNTANT"),
     async (req, res) => {
         const tenantId = req.user!.tenantId;
 
-        const student = await Student.findOne({
+        const student = await StudentModel.findOne({
             _id: req.params.id,
             tenantId,
-        });
+        }).lean();
 
-        if (!student)
-            return res.status(404).json({ error: "Student not found" });
+        if (!student) return res.status(404).json({error: "Student not found"});
 
-        return res.json({ student });
+        return res.json(toStudentDto(student));
     }
 );
 
 /*
 |--------------------------------------------------------------------------
-| UPDATE STUDENT
+| PATCH
 |--------------------------------------------------------------------------
-| Roles: SCHOOL_ADMIN
 */
-studentRouter.put(
+studentRouter.patch(
     "/:id",
-    schoolAuth,
-    requireRole("SCHOOL_ADMIN"),
+    requireRole("SCHOOL_ADMIN", "ACCOUNTANT"),
     async (req, res) => {
-        const schema = z.object({
-            firstName: z.string().min(1).optional(),
-            lastName: z.string().min(1).optional(),
-            gender: z.enum(["MALE", "FEMALE"]).optional(),
-            dateOfBirth: z.string().optional(),
-            grade: z.string().min(1).optional(),
-            section: z.string().min(1).optional(),
-            parentName: z.string().optional(),
-            parentPhone: z.string().optional(),
-            address: z.string().optional(),
-            status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
-        });
+        const schema = z
+            .object({
+                studentId: z.string().optional(),
+                firstName: z.string().optional(),
+                lastName: z.string().optional(),
+                gender: GenderSchema.optional(),
+                dateOfBirth: z.string().optional(),
+                grade: z.string().optional(),
+                section: z.string().optional(),
+                parentName: z.string().optional(),
+                parentPhone: z.string().optional(),
+                address: z.string().optional(),
+                status: StatusSchema.optional(),
+            })
+            .refine((v) => Object.keys(v).length > 0, {message: "At least one field is required"});
 
         const parsed = schema.safeParse(req.body);
-        if (!parsed.success)
-            return res.status(400).json({ error: "Invalid input" });
+        if (!parsed.success) return res.status(400).json({error: "Invalid input"});
 
         const tenantId = req.user!.tenantId;
 
-        const student = await Student.findOne({
-            _id: req.params.id,
-            tenantId,
-        });
+        const student = await StudentModel.findOne({_id: req.params.id, tenantId});
+        if (!student) return res.status(404).json({error: "Student not found"});
 
-        if (!student)
-            return res.status(404).json({ error: "Student not found" });
+        const data = parsed.data;
 
-        Object.assign(student, {
-            ...parsed.data,
-            dateOfBirth: parsed.data.dateOfBirth
-                ? new Date(parsed.data.dateOfBirth)
-                : student.dateOfBirth,
-        });
+        if (data.studentId !== undefined) student.studentId = data.studentId.trim();
+        if (data.firstName !== undefined) student.firstName = data.firstName.trim();
+        if (data.lastName !== undefined) student.lastName = data.lastName.trim();
+        if (data.gender !== undefined) student.gender = data.gender;
+        if (data.grade !== undefined) student.grade = data.grade.trim();
+        if (data.section !== undefined) student.section = data.section.trim();
+        if (data.status !== undefined) student.status = data.status;
+
+        if (data.parentName !== undefined) student.parentName = data.parentName.trim() || undefined;
+        if (data.parentPhone !== undefined) student.parentPhone = data.parentPhone.trim() || undefined;
+        if (data.address !== undefined) student.address = data.address.trim() || undefined;
+
+        if (data.dateOfBirth !== undefined) {
+            student.dateOfBirth = data.dateOfBirth ? new Date(data.dateOfBirth) : undefined;
+        }
 
         await student.save();
-
-        return res.json({ student });
+        return res.json(toStudentDto(student));
     }
 );
 
 /*
 |--------------------------------------------------------------------------
-| SOFT DELETE STUDENT (Set INACTIVE)
+| SOFT DELETE
 |--------------------------------------------------------------------------
-| Roles: SCHOOL_ADMIN
 */
 studentRouter.delete(
     "/:id",
-    schoolAuth,
-    requireRole("SCHOOL_ADMIN"),
+    requireRole("SCHOOL_ADMIN", "ACCOUNTANT"),
     async (req, res) => {
         const tenantId = req.user!.tenantId;
 
-        const student = await Student.findOne({
-            _id: req.params.id,
-            tenantId,
-        });
-
-        if (!student)
-            return res.status(404).json({ error: "Student not found" });
+        const student = await StudentModel.findOne({_id: req.params.id, tenantId});
+        if (!student) return res.status(404).json({error: "Student not found"});
 
         student.status = "INACTIVE";
         await student.save();
 
-        return res.json({ ok: true });
+        return res.json({ok: true});
     }
 );

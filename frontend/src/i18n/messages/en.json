@@ -1,0 +1,47 @@
+{
+  "Common": {
+    "appName": "School Management System",
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "search": "Search",
+    "confirm": "Confirm",
+    "logout": "Logout",
+    "language": "Language",
+    "theme": "Theme"
+  },
+
+  "Navigation": {
+    "dashboard": "Dashboard",
+    "students": "Students",
+    "teachers": "Teachers",
+    "classes": "Classes",
+    "settings": "Settings",
+    "admin": "Admin"
+  },
+
+  "Auth": {
+    "loginTitle": "Sign in to your account",
+    "email": "Email",
+    "password": "Password",
+    "rememberMe": "Remember me",
+    "forgotPassword": "Forgot password?",
+    "loginButton": "Login",
+    "invalidCredentials": "Invalid email or password"
+  },
+
+  "Dashboard": {
+    "welcome": "Welcome back, {name}!",
+    "totalStudents": "Total Students",
+    "totalTeachers": "Total Teachers",
+    "totalClasses": "Total Classes"
+  },
+
+  "Errors": {
+    "required": "This field is required",
+    "emailInvalid": "Invalid email address",
+    "somethingWrong": "Something went wrong"
+  }
+}

@@ -1,7 +1,6 @@
-import axios, {AxiosError, AxiosInstance} from "axios";
+import axios, {AxiosError, AxiosInstance, AxiosHeaders, InternalAxiosRequestConfig} from "axios";
 import {useSuperAdminStore} from "@/lib/stores/superAdminStore";
 import {useSchoolAuthStore} from "@/lib/stores/useSchoolAuthStore";
-
 
 export class ApiError extends Error {
     status?: number;
@@ -23,25 +22,31 @@ export const api: AxiosInstance = axios.create({
     headers: {"Content-Type": "application/json"},
 });
 
+
+function setHeader(config: InternalAxiosRequestConfig, key: string, value: string) {
+    const headers = config.headers;
+    headers.set(key, value);
+    return;
+}
+
 api.interceptors.request.use((config) => {
     const url = config.url ?? "";
-    config.headers = config.headers ?? {};
+    if (typeof window === "undefined") return config;
 
-    // Super Admin routes
-    if (typeof window !== "undefined" && url.startsWith("/super-admin")) {
+    // Super Admin
+    if (url.startsWith("/super-admin")) {
         const token = useSuperAdminStore.getState().token;
-        if (token) config.headers.Authorization = `Bearer ${token}`;
+        if (token) setHeader(config, "Authorization", `Bearer ${token}`);
         return config;
     }
 
-    // School routes (default)
-    if (typeof window !== "undefined") {
-        const {token: schoolToken, tenantSlug} = useSchoolAuthStore.getState();
+    // School default
+    const {token: schoolToken, tenantSlug} = useSchoolAuthStore.getState();
 
-        if (tenantSlug) config.headers["X-Tenant"] = tenantSlug;
-        if (schoolToken && !url.startsWith("/auth/login")) {
-            config.headers.Authorization = `Bearer ${schoolToken}`;
-        }
+    if (tenantSlug) setHeader(config, "X-Tenant", tenantSlug.trim().toLowerCase());
+
+    if (schoolToken && !url.startsWith("/auth/login")) {
+        setHeader(config, "Authorization", `Bearer ${schoolToken}`);
     }
 
     return config;
@@ -54,11 +59,17 @@ api.interceptors.response.use(
         const status = err.response?.status;
         const data: any = err.response?.data;
 
-        if (status === 401 && url.startsWith("/super-admin")) {
-            useSuperAdminStore.getState().logout();
-        }
-        if (status === 401 && !url.startsWith("/super-admin") && !url.startsWith("/auth/login")) {
-            useSchoolAuthStore.getState().logout();
+        const isSuperAdmin = url.startsWith("/super-admin");
+        const isLogin = url.startsWith("/auth/login") || url.startsWith("/super-admin/login");
+
+        if (status === 401 && !isLogin) {
+            if (isSuperAdmin) {
+                const t = useSuperAdminStore.getState().token;
+                if (t) useSuperAdminStore.getState().logout();
+            } else {
+                const t = useSchoolAuthStore.getState().token;
+                if (t) useSchoolAuthStore.getState().logout();
+            }
         }
 
         const message = data?.error || data?.message || err.message || "Request failed";

@@ -10,7 +10,7 @@ export function requireRole(...roles: SchoolRole[]) {
         if (!req.user)
             return res.status(401).json({ error: "Unauthorized" });
 
-        if (!roles.includes(req.user.role))
+        if (!roles.includes(<"SCHOOL_ADMIN" | "TEACHER" | "ACCOUNTANT">req.user.role))
             return res.status(403).json({ error: "Forbidden" });
 
         next();

@@ -1,15 +1,32 @@
-import { Router } from "express";
-import { z } from "zod";
+import {Router} from "express";
+import {z} from "zod";
 
-import { User } from "../users/user.model";
-import { Tenant } from "../tenants/tenant.model";
+import {UserModel} from "../users/user.model";
+import {TenantModel} from "../tenants/tenant.model";
 
-import { verifyPassword, hashPassword } from "../../utils/password";
-import { signSchoolAccessToken } from "../../utils/jwt";
+import {verifyPassword, hashPassword} from "../../utils/password";
+import {signSchoolAccessToken} from "../../utils/jwt";
 
-import { schoolAuth } from "../../middlewares/schoolAuth";
+import {schoolAuth} from "../../middlewares/schoolAuth";
 
 export const authRouter = Router();
+
+/** ---------- Validators ---------- */
+const tenantHeaderSchema = z
+    .string()
+    .min(1)
+    .max(80)
+    .regex(/^[a-z0-9-]+$/);
+
+const loginBodySchema = z.object({
+    email: z.string().email(),
+    password: z.string().min(6),
+});
+
+const changePasswordBodySchema = z.object({
+    currentPassword: z.string().min(6),
+    newPassword: z.string().min(8),
+});
 
 /*
 |--------------------------------------------------------------------------
@@ -18,43 +35,31 @@ export const authRouter = Router();
 | Requires: X-Tenant header
 */
 authRouter.post("/login", async (req, res) => {
-    const schema = z.object({
-        email: z.string().email(),
-        password: z.string().min(6),
-    });
+    const body = loginBodySchema.safeParse(req.body);
+    if (!body.success) return res.status(400).json({error: "Invalid input"});
 
-    const parsed = schema.safeParse(req.body);
-    if (!parsed.success)
-        return res.status(400).json({ error: "Invalid input" });
+    const rawTenant = req.header("X-Tenant");
+    const tenantParsed = tenantHeaderSchema.safeParse(rawTenant?.trim().toLowerCase());
 
-    const tenantSlug = req.header("X-Tenant");
-    if (!tenantSlug)
-        return res.status(400).json({ error: "Missing X-Tenant header" });
+    // Enterprise: prevent tenant enumeration
+    const fail = () => res.status(401).json({error: "Invalid credentials"});
 
-    const tenant = await Tenant.findOne({
-        slug: tenantSlug,
-        isActive: true,
-    });
+    if (!tenantParsed.success) return fail();
+    const tenantSlug = tenantParsed.data;
 
-    if (!tenant)
-        return res.status(404).json({ error: "Tenant not found" });
+    const tenant = await TenantModel.findOne({slug: tenantSlug, isActive: true}).lean();
+    if (!tenant) return fail();
 
-    const user = await User.findOne({
+    const user = await UserModel.findOne({
         tenantId: tenant._id,
-        email: parsed.data.email.toLowerCase(),
+        email: body.data.email.toLowerCase(),
         isActive: true,
     });
 
-    if (!user)
-        return res.status(401).json({ error: "Invalid credentials" });
+    if (!user) return fail();
 
-    const ok = await verifyPassword(
-        parsed.data.password,
-        user.passwordHash
-    );
-
-    if (!ok)
-        return res.status(401).json({ error: "Invalid credentials" });
+    const ok = await verifyPassword(body.data.password, user.passwordHash);
+    if (!ok) return fail();
 
     const accessToken = signSchoolAccessToken({
         userId: user._id.toString(),
@@ -66,13 +71,13 @@ authRouter.post("/login", async (req, res) => {
         accessToken,
         mustChangePassword: user.mustChangePassword,
         user: {
-            id: user._id,
+            id: user._id.toString(),
             name: user.name,
             email: user.email,
             role: user.role,
         },
         tenant: {
-            id: tenant._id,
+            id: tenant._id.toString(),
             name: tenant.name,
             slug: tenant.slug,
         },
@@ -85,31 +90,29 @@ authRouter.post("/login", async (req, res) => {
 |--------------------------------------------------------------------------
 */
 authRouter.get("/me", schoolAuth, async (req, res) => {
-    const { userId, tenantId } = req.user!;
+    const {userId, tenantId} = req.user!;
 
-    const user = await User.findOne({
+    const user = await UserModel.findOne({
         _id: userId,
         tenantId,
         isActive: true,
-    });
+    }).lean();
 
-    if (!user)
-        return res.status(404).json({ error: "User not found" });
+    if (!user) return res.status(404).json({error: "User not found"});
 
-    const tenant = await Tenant.findById(tenantId);
-    if (!tenant)
-        return res.status(404).json({ error: "Tenant not found" });
+    const tenant = await TenantModel.findById(tenantId).lean();
+    if (!tenant) return res.status(404).json({error: "Tenant not found"});
 
     return res.json({
         user: {
-            id: user._id,
+            id: user._id.toString(),
             name: user.name,
             email: user.email,
             role: user.role,
             mustChangePassword: user.mustChangePassword,
         },
         tenant: {
-            id: tenant._id,
+            id: tenant._id.toString(),
             name: tenant.name,
             slug: tenant.slug,
         },
@@ -121,46 +124,21 @@ authRouter.get("/me", schoolAuth, async (req, res) => {
 | CHANGE PASSWORD
 |--------------------------------------------------------------------------
 */
-authRouter.post(
-    "/change-password",
-    schoolAuth,
-    async (req, res) => {
-        const schema = z.object({
-            currentPassword: z.string().min(6),
-            newPassword: z.string().min(8),
-        });
+authRouter.post("/change-password", schoolAuth, async (req, res) => {
+    const body = changePasswordBodySchema.safeParse(req.body);
+    if (!body.success) return res.status(400).json({error: "Invalid input"});
 
-        const parsed = schema.safeParse(req.body);
-        if (!parsed.success)
-            return res.status(400).json({ error: "Invalid input" });
+    const {userId, tenantId} = req.user!;
 
-        const { userId, tenantId } = req.user!;
+    const user = await UserModel.findOne({_id: userId, tenantId});
+    if (!user) return res.status(404).json({error: "User not found"});
 
-        const user = await User.findOne({
-            _id: userId,
-            tenantId,
-        });
+    const ok = await verifyPassword(body.data.currentPassword, user.passwordHash);
+    if (!ok) return res.status(401).json({error: "Current password incorrect"});
 
-        if (!user)
-            return res.status(404).json({ error: "User not found" });
+    user.passwordHash = await hashPassword(body.data.newPassword);
+    user.mustChangePassword = false;
+    await user.save();
 
-        const ok = await verifyPassword(
-            parsed.data.currentPassword,
-            user.passwordHash
-        );
-
-        if (!ok)
-            return res
-                .status(401)
-                .json({ error: "Current password incorrect" });
-
-        user.passwordHash = await hashPassword(
-            parsed.data.newPassword
-        );
-
-        user.mustChangePassword = false;
-        await user.save();
-
-        return res.json({ ok: true });
-    }
-);
+    return res.json({ok: true});
+});

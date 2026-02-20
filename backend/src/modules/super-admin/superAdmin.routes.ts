@@ -1,14 +1,14 @@
-import { Router } from "express";
-import { z } from "zod";
+import {Router} from "express";
+import {z} from "zod";
 
-import { SuperAdmin } from "./superAdmin.model";
-import { Tenant } from "../tenants/tenant.model";
-import { User } from "../users/user.model";
+import {SuperAdminModel} from "./superAdmin.model";
+import {TenantModel} from "../tenants/tenant.model";
+import {UserModel} from "../users/user.model";
 
-import { verifyPassword, hashPassword } from "../../utils/password";
-import { signSuperAdminAccessToken } from "../../utils/jwt";
+import {verifyPassword, hashPassword} from "../../utils/password";
+import {signSuperAdminAccessToken} from "../../utils/jwt";
 
-import { superAdminAuth } from "../../middlewares/superAdminAuth";
+import {superAdminAuth} from "../../middlewares/superAdminAuth";
 
 export const superAdminRouter = Router();
 
@@ -25,19 +25,19 @@ superAdminRouter.post("/login", async (req, res) => {
 
     const parsed = schema.safeParse(req.body);
     if (!parsed.success)
-        return res.status(400).json({ error: "Invalid input" });
+        return res.status(400).json({error: "Invalid input"});
 
-    const admin = await SuperAdmin.findOne({
+    const admin = await SuperAdminModel.findOne({
         email: parsed.data.email.toLowerCase(),
     });
 
     if (!admin)
-        return res.status(401).json({ error: "Invalid credentials" });
+        return res.status(401).json({error: "Invalid credentials"});
 
     const ok = await verifyPassword(parsed.data.password, admin.passwordHash);
 
     if (!ok)
-        return res.status(401).json({ error: "Invalid credentials" });
+        return res.status(401).json({error: "Invalid credentials"});
 
     const accessToken = signSuperAdminAccessToken({
         superAdminId: admin._id.toString(),
@@ -59,14 +59,15 @@ superAdminRouter.post("/login", async (req, res) => {
 |--------------------------------------------------------------------------
 */
 superAdminRouter.get("/me", superAdminAuth, async (req, res) => {
-    const admin = await SuperAdmin.findById(req.superAdmin!.superAdminId);
+    const admin = await SuperAdminModel.findById(req.superAdmin!.superAdminId);
 
     if (!admin)
-        return res.status(404).json({ error: "Super admin not found" });
+        return res.status(404).json({error: "Super admin not found"});
 
     return res.json({
         superAdmin: {
             id: admin._id,
+            name: admin.name,
             email: admin.email,
         },
     });
@@ -87,16 +88,16 @@ superAdminRouter.post("/tenants", superAdminAuth, async (req, res) => {
 
     const parsed = schema.safeParse(req.body);
     if (!parsed.success)
-        return res.status(400).json({ error: "Invalid input" });
+        return res.status(400).json({error: "Invalid input"});
 
-    const { tenantName, tenantSlug, adminName, adminEmail } = parsed.data;
+    const {tenantName, tenantSlug, adminName, adminEmail} = parsed.data;
 
-    const existingTenant = await Tenant.findOne({ slug: tenantSlug.toLowerCase() });
+    const existingTenant = await TenantModel.findOne({slug: tenantSlug.toLowerCase()});
 
     if (existingTenant)
-        return res.status(400).json({ error: "Tenant slug already exists" });
+        return res.status(400).json({error: "Tenant slug already exists"});
 
-    const tenant = await Tenant.create({
+    const tenant = await TenantModel.create({
         name: tenantName,
         slug: tenantSlug.toLowerCase(),
     });
@@ -105,7 +106,7 @@ superAdminRouter.post("/tenants", superAdminAuth, async (req, res) => {
 
     const passwordHash = await hashPassword(tempPassword);
 
-    const schoolAdmin = await User.create({
+    const schoolAdmin = await UserModel.create({
         tenantId: tenant._id,
         name: adminName,
         email: adminEmail.toLowerCase(),
@@ -143,7 +144,7 @@ superAdminRouter.get("/tenants", superAdminAuth, async (req, res) => {
     });
 
     const parsed = schema.safeParse(req.query);
-    if (!parsed.success) return res.status(400).json({ error: "Invalid query params" });
+    if (!parsed.success) return res.status(400).json({error: "Invalid query params"});
 
     const q = (parsed.data.q ?? "").trim();
     const page = Math.max(1, Number(parsed.data.page ?? 1));
@@ -152,17 +153,17 @@ superAdminRouter.get("/tenants", superAdminAuth, async (req, res) => {
     const filter: Record<string, any> = {};
     if (q) {
         filter.$or = [
-            { name: { $regex: q, $options: "i" } },
-            { slug: { $regex: q, $options: "i" } },
+            {name: {$regex: q, $options: "i"}},
+            {slug: {$regex: q, $options: "i"}},
         ];
     }
 
     const [items, total] = await Promise.all([
-        Tenant.find(filter)
-            .sort({ createdAt: -1 })
+        TenantModel.find(filter)
+            .sort({createdAt: -1})
             .skip((page - 1) * limit)
             .limit(limit),
-        Tenant.countDocuments(filter),
+        TenantModel.countDocuments(filter),
     ]);
 
     const totalPages = Math.max(1, Math.ceil(total / limit));
@@ -192,18 +193,18 @@ superAdminRouter.post(
     "/tenants/:tenantId/reset-password",
     superAdminAuth,
     async (req, res) => {
-        const tenant = await Tenant.findById(req.params.tenantId);
+        const tenant = await TenantModel.findById(req.params.tenantId);
 
         if (!tenant)
-            return res.status(404).json({ error: "Tenant not found" });
+            return res.status(404).json({error: "Tenant not found"});
 
-        const admin = await User.findOne({
+        const admin = await UserModel.findOne({
             tenantId: tenant._id,
             role: "SCHOOL_ADMIN",
         });
 
         if (!admin)
-            return res.status(404).json({ error: "School admin not found" });
+            return res.status(404).json({error: "School admin not found"});
 
         const tempPassword = Math.random().toString(36).slice(-8);
 

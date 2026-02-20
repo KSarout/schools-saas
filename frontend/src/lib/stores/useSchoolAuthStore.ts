@@ -1,97 +1,98 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export type SchoolRole = "SCHOOL_ADMIN" | "TEACHER" | "ACCOUNTANT";
-
 export type SchoolUser = {
     id: string;
     name: string;
     email: string;
-    role: SchoolRole;
+    role: string;
     mustChangePassword?: boolean;
 };
 
-type SchoolAuthState = {
-    token: string | null;
-    tenantSlug: string | null;
+export type SchoolTenant = {
+    id: string;
+    name: string;
+    slug: string;
+};
+
+export type LoginPayload = {
+    token: string;
+    tenantSlug: string;
+    user?: SchoolUser;
+    tenant?: SchoolTenant;
+};
+
+export type SchoolAuthState = {
     hydrated: boolean;
 
-    // Optional cached profile (useful for UI)
+    token: string | null;
+    tenantSlug: string | null;
+
     user: SchoolUser | null;
-    tenant: { id: string; name: string; slug: string } | null;
-};
-
-type SchoolAuthActions = {
-    setTenantSlug: (slug: string) => void;
-
-    // Called after /auth/login success
-    login: (args: {
-        token: string;
-        tenantSlug: string;
-        user?: SchoolUser | null;
-        tenant?: { id: string; name: string; slug: string } | null;
-    }) => void;
-
-    // Used after /auth/me to store profile info
-    setProfile: (args: {
-        user: SchoolUser | null;
-        tenant: { id: string; name: string; slug: string } | null;
-    }) => void;
-
-    logout: () => void;
+    tenant: SchoolTenant | null;
 
     setHydrated: () => void;
+
+    setToken: (token: string | null) => void;
+    setTenantSlug: (slug: string | null) => void;
+
+    login: (payload: LoginPayload) => void;
+    logout: () => void;
 };
 
-export type SchoolAuthStore = SchoolAuthState & SchoolAuthActions;
+function normalizeTenantSlug(slug: string) {
+    return slug.trim().toLowerCase();
+}
 
-export const useSchoolAuthStore = create<SchoolAuthStore>()(
+export const useSchoolAuthStore = create<SchoolAuthState>()(
     persist(
         (set, get) => ({
+            hydrated: false,
+
             token: null,
             tenantSlug: null,
-            hydrated: false,
 
             user: null,
             tenant: null,
 
-            setTenantSlug: (slug: string) => {
-                set({ tenantSlug: slug.trim().toLowerCase() });
-            },
+            setHydrated: () => set({ hydrated: true }),
 
-            login: ({ token, tenantSlug, user, tenant }) => {
-                set({
+            setToken: (token) =>
+                set((s) => ({
                     token,
-                    tenantSlug: tenantSlug.trim().toLowerCase(),
+                    // enterprise: if token is cleared, also clear cached identity
+                    ...(token ? null : { user: null, tenant: null }),
+                })),
+
+            setTenantSlug: (slug) =>
+                set({
+                    tenantSlug: slug ? normalizeTenantSlug(slug) : null,
+                }),
+
+            login: ({ token, tenantSlug, user, tenant }) =>
+                set({
+                    hydrated: true, // makes login UX immediate
+                    token,
+                    tenantSlug: normalizeTenantSlug(tenantSlug),
                     user: user ?? null,
                     tenant: tenant ?? null,
-                });
-            },
+                }),
 
-            setProfile: ({ user, tenant }) => {
-                set({
-                    user,
-                    tenant,
-                });
-            },
-
-            logout: () => {
+            logout: () =>
                 set({
                     token: null,
                     tenantSlug: null,
                     user: null,
                     tenant: null,
-                });
-            },
-
-            setHydrated: () => set({ hydrated: true }),
+                }),
         }),
         {
             name: "school-auth",
-            // Only persist what we need to survive reload
-            partialize: (state) => ({
-                token: state.token,
-                tenantSlug: state.tenantSlug,
+            partialize: (s) => ({
+                token: s.token,
+                tenantSlug: s.tenantSlug,
+                user: s.user,
+                tenant: s.tenant,
             }),
             onRehydrateStorage: () => (state) => {
                 state?.setHydrated();
@@ -99,3 +100,6 @@ export const useSchoolAuthStore = create<SchoolAuthStore>()(
         }
     )
 );
+
+// Optional selector helpers (nice pattern)
+export const selectIsAuthed = (s: SchoolAuthState) => s.hydrated && !!s.token;

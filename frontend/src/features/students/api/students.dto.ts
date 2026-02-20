@@ -1,0 +1,46 @@
+import { z } from "zod";
+
+export const StudentGender = ["MALE", "FEMALE"] as const;
+export type StudentGender = (typeof StudentGender)[number];
+
+export const StudentSchema = z.object({
+    id: z.string(),
+    studentId: z.string(),
+    firstName: z.string(),
+    lastName: z.string(),
+    gender: z.enum(StudentGender),
+    dateOfBirth: z.string().optional(),
+    grade: z.string(),
+    section: z.string(),
+    parentName: z.string().optional(),
+    parentPhone: z.string().optional(),
+    address: z.string().optional(),
+    createdAt: z.string().optional(),
+});
+export type StudentDto = z.infer<typeof StudentSchema>;
+
+export const StudentListResponseSchema = z.object({
+    items: z.array(StudentSchema),
+    total: z.number(),
+    page: z.number(),
+    limit: z.number(),
+    totalPages: z.number(),
+});
+export type StudentListResponse = z.infer<typeof StudentListResponseSchema>;
+
+export const StudentCreateInputSchema = z.object({
+    studentId: z.string().min(1),
+    firstName: z.string().min(1),
+    lastName: z.string().min(1),
+    gender: z.enum(StudentGender),
+    dateOfBirth: z.string().optional(),
+    grade: z.string().min(1),
+    section: z.string().min(1),
+    parentName: z.string().optional(),
+    parentPhone: z.string().optional(),
+    address: z.string().optional(),
+});
+export type StudentCreateInput = z.infer<typeof StudentCreateInputSchema>;
+
+export const StudentUpdateInputSchema = StudentCreateInputSchema.partial();
+export type StudentUpdateInput = z.infer<typeof StudentUpdateInputSchema>;

@@ -1,50 +1,63 @@
-import mongoose from "mongoose";
+import {Schema, model, type HydratedDocument, type Types} from "mongoose";
 
+export type StudentGender = "MALE" | "FEMALE";
 export type StudentStatus = "ACTIVE" | "INACTIVE";
-export type Gender = "MALE" | "FEMALE";
 
-const StudentSchema = new mongoose.Schema(
+export type Student = {
+    tenantId: Types.ObjectId;
+
+    studentCode: string; // generated: STU-YYYY-000123
+    studentId: string;   // school internal/legacy id
+
+    firstName: string;
+    lastName: string;
+    gender: StudentGender;
+
+    dateOfBirth?: Date;
+
+    grade: string;
+    section: string;
+
+    parentName?: string;
+    parentPhone?: string;
+    address?: string;
+
+    status: StudentStatus;
+
+    createdAt: Date;
+    updatedAt: Date;
+};
+
+export type StudentDocument = HydratedDocument<Student>;
+
+const StudentSchema = new Schema<Student>(
     {
-        tenantId: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "Tenant",
-            required: true,
-            index: true,
-        },
+        tenantId: {type: Schema.Types.ObjectId, required: true, index: true, ref: "Tenant"},
 
-        studentId: { type: String, required: true },
-        firstName: { type: String, required: true },
-        lastName: { type: String, required: true },
+        studentCode: {type: String, required: true, trim: true},
+        studentId: {type: String, required: true, trim: true},
 
-        gender: {
-            type: String,
-            enum: ["MALE", "FEMALE"],
-            required: true,
-        },
+        firstName: {type: String, required: true, trim: true},
+        lastName: {type: String, required: true, trim: true},
+        gender: {type: String, enum: ["MALE", "FEMALE"], required: true},
 
-        dateOfBirth: { type: Date },
+        dateOfBirth: {type: Date},
 
-        grade: { type: String, required: true },
-        section: { type: String, required: true },
+        grade: {type: String, required: true, trim: true},
+        section: {type: String, required: true, trim: true},
 
-        parentName: { type: String },
-        parentPhone: { type: String },
+        parentName: {type: String, trim: true},
+        parentPhone: {type: String, trim: true},
+        address: {type: String, trim: true},
 
-        address: { type: String },
-
-        status: {
-            type: String,
-            enum: ["ACTIVE", "INACTIVE"],
-            default: "ACTIVE",
-        },
+        status: {type: String, enum: ["ACTIVE", "INACTIVE"], default: "ACTIVE"},
     },
-    { timestamps: true }
+    {timestamps: true}
 );
 
-// Unique studentId per tenant
-StudentSchema.index({ tenantId: 1, studentId: 1 }, { unique: true });
+// Uniqueness & performance (multi-tenant)
+StudentSchema.index({tenantId: 1, studentCode: 1}, {unique: true});
+StudentSchema.index({tenantId: 1, studentId: 1}, {unique: true});
+StudentSchema.index({tenantId: 1, createdAt: -1});
 
-// Search index (basic)
-StudentSchema.index({ tenantId: 1, firstName: 1, lastName: 1 });
-
-export const Student = mongoose.model("Student", StudentSchema);
+export const StudentModel = model<Student>("Student", StudentSchema);
