@@ -14,6 +14,7 @@ import { useSectionsList } from "@/features/sections/hooks/useSections";
 import { useStudentList } from "@/features/students/hooks/useStudents";
 import { EnrollmentFiltersBar } from "@/features/enrollment/components/EnrollmentFiltersBar";
 import { EnrollmentTable } from "@/features/enrollment/components/EnrollmentTable";
+import { EnrollmentAuditTable } from "@/features/enrollment/components/EnrollmentAuditTable";
 import { AssignDialog } from "@/features/enrollment/components/AssignDialog";
 import { TransferDialog } from "@/features/enrollment/components/TransferDialog";
 import { PromoteDialog } from "@/features/enrollment/components/PromoteDialog";
@@ -57,7 +58,9 @@ export default function EnrollmentPageView() {
     );
 
     const meQuery = useSchoolMe();
-    const canManage = meQuery.data?.user.role === "SCHOOL_ADMIN";
+    const role = meQuery.data?.user.role;
+    const canManage = role === "SCHOOL_ADMIN";
+    const canViewAudit = role === "SCHOOL_ADMIN" || role === "ACCOUNTANT";
 
     const enrollmentListQuery = useEnrollments(listParams);
 
@@ -200,6 +203,8 @@ export default function EnrollmentPageView() {
                     />
                 </CardContent>
             </Card>
+
+            {canViewAudit ? <EnrollmentAuditTable students={studentOptions} /> : null}
 
             <Card>
                 <CardContent className="p-0 md:p-0">

@@ -26,8 +26,9 @@ Current tests include basic safety coverage for:
 - School protected nested layouts (avoid duplicate shell/sidebar rendering)
 - Enrollment table RBAC action visibility guards
 - Student form strict placement + optional Student ID messaging
+- DTO contract guardrails for enterprise list response parsing across core school feature packages
 
-Note: Current frontend checks are dependency-free smoke tests (source-level assertions) so they run in constrained environments.
+Note: Current frontend checks are dependency-free smoke tests (source-level assertions) so they run in constrained environments without external package install.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 

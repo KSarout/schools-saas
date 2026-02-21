@@ -16,6 +16,13 @@ function expectNotIncludes(content, needle, message) {
 }
 
 function run() {
+    const protectedLayout = read("src/app/[locale]/(app)/school/(protected)/layout.tsx");
+    expectIncludes(
+        protectedLayout,
+        "SchoolSidebar",
+        "protected school layout must own sidebar shell rendering"
+    );
+
     const dashboardLayout = read("src/app/[locale]/(app)/school/(protected)/dashboard/layout.tsx");
     expectIncludes(
         dashboardLayout,
@@ -63,6 +70,24 @@ function run() {
         "Optional: leave blank to auto-use generated STU code",
         "student ID field must remain optional and clear to users"
     );
+
+    const dtoFiles = [
+        "src/features/students/api/students.dto.ts",
+        "src/features/school-users/api/schoolUsers.dto.ts",
+        "src/features/enrollment/dto/enrollment.dto.ts",
+        "src/features/academic-years/api/academicYears.dto.ts",
+        "src/features/classes/api/classes.dto.ts",
+        "src/features/sections/api/sections.dto.ts",
+    ];
+
+    for (const relPath of dtoFiles) {
+        const dtoContent = read(relPath);
+        expectIncludes(
+            dtoContent,
+            "listResponseSchema",
+            `${relPath} must validate enterprise list response shape with listResponseSchema`
+        );
+    }
 
     console.log("frontend smoke tests passed");
 }

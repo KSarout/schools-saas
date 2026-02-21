@@ -3,6 +3,8 @@ import { listResponseSchema } from "@/lib/schemas/listResponse";
 
 export const EnrollmentStatusSchema = z.enum(["ACTIVE", "TRANSFERRED", "PROMOTED", "WITHDRAWN"]);
 export type EnrollmentStatus = z.infer<typeof EnrollmentStatusSchema>;
+export const EnrollmentAuditActionSchema = z.enum(["ASSIGN", "TRANSFER", "PROMOTE", "WITHDRAW"]);
+export type EnrollmentAuditAction = z.infer<typeof EnrollmentAuditActionSchema>;
 
 const EnrollmentNodeSchema = z.object({
     id: z.string(),
@@ -34,6 +36,28 @@ export type EnrollmentListItem = z.infer<typeof EnrollmentListItemSchema>;
 
 export const EnrollmentListResponseSchema = listResponseSchema(EnrollmentListItemSchema);
 export type EnrollmentListResponse = z.infer<typeof EnrollmentListResponseSchema>;
+
+const EnrollmentAuditPlacementSchema = z.object({
+    academicYearId: z.string().optional(),
+    classId: z.string().optional(),
+    sectionId: z.string().optional(),
+});
+
+export const EnrollmentAuditItemSchema = z.object({
+    id: z.string(),
+    action: EnrollmentAuditActionSchema,
+    studentId: z.string(),
+    actorUserId: z.string(),
+    from: EnrollmentAuditPlacementSchema.optional(),
+    to: EnrollmentAuditPlacementSchema.optional(),
+    effectiveDate: z.string().optional(),
+    note: z.string().optional(),
+    createdAt: z.string().optional(),
+});
+export type EnrollmentAuditItem = z.infer<typeof EnrollmentAuditItemSchema>;
+
+export const EnrollmentAuditListResponseSchema = listResponseSchema(EnrollmentAuditItemSchema);
+export type EnrollmentAuditListResponse = z.infer<typeof EnrollmentAuditListResponseSchema>;
 
 export const EnrollmentDtoSchema = z.object({
     id: z.string(),
@@ -91,6 +115,16 @@ export const ListEnrollmentsParamsSchema = z.object({
     limit: z.number().int().min(1).max(100),
 });
 export type ListEnrollmentsParams = z.infer<typeof ListEnrollmentsParamsSchema>;
+
+export const ListEnrollmentAuditParamsSchema = z.object({
+    page: z.number().int().min(1),
+    limit: z.number().int().min(1).max(100),
+    studentId: z.string().optional(),
+    action: EnrollmentAuditActionSchema.optional(),
+    from: z.string().optional(),
+    to: z.string().optional(),
+});
+export type ListEnrollmentAuditParams = z.infer<typeof ListEnrollmentAuditParamsSchema>;
 
 export const AssignEnrollmentPayloadSchema = z.object({
     studentId: z.string().min(1, "Student is required"),

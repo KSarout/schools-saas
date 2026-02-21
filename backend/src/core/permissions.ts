@@ -31,6 +31,13 @@ export const schoolPermissionMatrix = {
     "sections.create": ["SCHOOL_ADMIN", "ACCOUNTANT"],
     "sections.update": ["SCHOOL_ADMIN", "ACCOUNTANT"],
     "sections.delete": ["SCHOOL_ADMIN", "ACCOUNTANT"],
+    "enrollments.list": ["SCHOOL_ADMIN", "ACCOUNTANT", "TEACHER"],
+    "enrollments.history": ["SCHOOL_ADMIN", "ACCOUNTANT", "TEACHER"],
+    "enrollments.assign": ["SCHOOL_ADMIN"],
+    "enrollments.transfer": ["SCHOOL_ADMIN"],
+    "enrollments.promote": ["SCHOOL_ADMIN"],
+    "enrollments.withdraw": ["SCHOOL_ADMIN"],
+    "enrollments.audit.list": ["SCHOOL_ADMIN", "ACCOUNTANT"],
 } as const satisfies Record<string, readonly SchoolRole[]>;
 
 export const superAdminPermissionMatrix = {
@@ -79,6 +86,13 @@ export const routePermissionMatrix = {
     "POST /sections": "sections.create",
     "PATCH /sections/:id": "sections.update",
     "DELETE /sections/:id": "sections.delete",
+    "GET /api/school/enrollments": "enrollments.list",
+    "GET /api/school/enrollments/student/:studentId/history": "enrollments.history",
+    "POST /api/school/enrollments/assign": "enrollments.assign",
+    "POST /api/school/enrollments/transfer": "enrollments.transfer",
+    "POST /api/school/enrollments/promote": "enrollments.promote",
+    "POST /api/school/enrollments/withdraw": "enrollments.withdraw",
+    "GET /api/school/enrollments/audit": "enrollments.audit.list",
     "POST /super-admin/login": null,
     "POST /super-admin/refresh": null,
     "POST /super-admin/logout": null,

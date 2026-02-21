@@ -8,6 +8,7 @@ import { SectionModel } from "../../sections/section.model";
 import { StudentModel } from "../../students/model/student.model";
 import { UserModel } from "../../users/model/user.model";
 import { EnrollmentModel } from "../model/enrollment.model";
+import { EnrollmentAuditLogModel } from "../model/enrollmentAudit.model";
 import {
     createEnrollment,
     promoteStudentEnrollment,
@@ -24,6 +25,7 @@ test("createEnrollment creates active enrollment with validated refs", async () 
     const originalUserFind = UserModel.findOne;
     const originalEnrollmentFind = EnrollmentModel.findOne;
     const originalEnrollmentCreate = EnrollmentModel.create;
+    const originalAuditCreate = EnrollmentAuditLogModel.create;
 
     (StudentModel as any).findOne = () => ({ setOptions: async () => ({ _id: "stu-1" }) });
     (AcademicYearModel as any).findOne = () => ({ setOptions: async () => ({ _id: "year-1" }) });
@@ -38,9 +40,10 @@ test("createEnrollment creates active enrollment with validated refs", async () 
         createdAt: new Date("2026-01-01T00:00:00.000Z"),
         updatedAt: new Date("2026-01-01T00:00:00.000Z"),
     });
+    (EnrollmentAuditLogModel as any).create = async (docs: any[]) => [{ _id: "audit-0", ...docs[0] }];
 
     try {
-        const created = await createEnrollment("tenant-1", {
+        const created = await createEnrollment("507f1f77bcf86cd799439099", {
             studentId: "507f1f77bcf86cd799439001",
             academicYearId: "507f1f77bcf86cd799439002",
             classId: "507f1f77bcf86cd799439003",
@@ -59,6 +62,63 @@ test("createEnrollment creates active enrollment with validated refs", async () 
         (UserModel as any).findOne = originalUserFind;
         (EnrollmentModel as any).findOne = originalEnrollmentFind;
         (EnrollmentModel as any).create = originalEnrollmentCreate;
+        (EnrollmentAuditLogModel as any).create = originalAuditCreate;
+    }
+});
+
+test("createEnrollment writes enrollment audit log with ASSIGN action", async () => {
+    const originalStudentFind = StudentModel.findOne;
+    const originalYearFind = AcademicYearModel.findOne;
+    const originalClassFind = SchoolClassModel.findOne;
+    const originalSectionFind = SectionModel.findOne;
+    const originalUserFind = UserModel.findOne;
+    const originalEnrollmentFind = EnrollmentModel.findOne;
+    const originalEnrollmentCreate = EnrollmentModel.create;
+    const originalAuditCreate = EnrollmentAuditLogModel.create;
+
+    let seenAction = "";
+    let seenStudentId = "";
+
+    (StudentModel as any).findOne = () => ({ setOptions: async () => ({ _id: "stu-1" }) });
+    (AcademicYearModel as any).findOne = () => ({ setOptions: async () => ({ _id: "year-1" }) });
+    (SchoolClassModel as any).findOne = () => ({ setOptions: async () => ({ _id: "class-1", academicYearId: "year-1" }) });
+    (SectionModel as any).findOne = () => ({ setOptions: async () => ({ _id: "section-1", classId: "class-1" }) });
+    (UserModel as any).findOne = () => ({ setOptions: async () => ({ _id: "actor-1" }) });
+    (EnrollmentModel as any).findOne = () => ({ setOptions: async () => null });
+
+    (EnrollmentModel as any).create = async (doc: any) => ({
+        _id: "enroll-2",
+        ...doc,
+        createdAt: new Date("2026-01-01T00:00:00.000Z"),
+        updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+    });
+    (EnrollmentAuditLogModel as any).create = async (docs: any[]) => {
+        seenAction = String(docs[0]?.action ?? "");
+        seenStudentId = String(docs[0]?.studentId ?? "");
+        return [{ _id: "audit-1", ...docs[0] }];
+    };
+
+    try {
+        await createEnrollment("507f1f77bcf86cd799439099", {
+            studentId: "507f1f77bcf86cd799439001",
+            academicYearId: "507f1f77bcf86cd799439002",
+            classId: "507f1f77bcf86cd799439003",
+            sectionId: "507f1f77bcf86cd799439004",
+            startDate: new Date("2026-08-01T00:00:00.000Z"),
+            createdBy: "507f1f77bcf86cd799439005",
+        });
+
+        assert.equal(seenAction, "ASSIGN");
+        assert.equal(seenStudentId, "507f1f77bcf86cd799439001");
+    } finally {
+        (StudentModel as any).findOne = originalStudentFind;
+        (AcademicYearModel as any).findOne = originalYearFind;
+        (SchoolClassModel as any).findOne = originalClassFind;
+        (SectionModel as any).findOne = originalSectionFind;
+        (UserModel as any).findOne = originalUserFind;
+        (EnrollmentModel as any).findOne = originalEnrollmentFind;
+        (EnrollmentModel as any).create = originalEnrollmentCreate;
+        (EnrollmentAuditLogModel as any).create = originalAuditCreate;
     }
 });
 
@@ -71,14 +131,15 @@ test("transitionEnrollment closes current enrollment and creates next active enr
     const originalUserFind = UserModel.findOne;
     const originalEnrollmentFind = EnrollmentModel.findOne;
     const originalEnrollmentCreate = EnrollmentModel.create;
+    const originalAuditCreate = EnrollmentAuditLogModel.create;
 
     let savedCurrent = false;
     const currentDoc: any = {
         _id: "enroll-current",
         studentId: "stu-1",
-        academicYearId: "year-1",
-        classId: "class-1",
-        sectionId: "section-1",
+        academicYearId: "507f1f77bcf86cd799439022",
+        classId: "507f1f77bcf86cd799439033",
+        sectionId: "507f1f77bcf86cd799439044",
         status: "ACTIVE",
         startDate: new Date("2026-08-01T00:00:00.000Z"),
         createdBy: "actor-old",
@@ -124,9 +185,10 @@ test("transitionEnrollment closes current enrollment and creates next active enr
             updatedAt: new Date("2027-01-01T00:00:00.000Z"),
         },
     ];
+    (EnrollmentAuditLogModel as any).create = async (docs: any[]) => [{ _id: "audit-2", ...docs[0] }];
 
     try {
-        const result = await transitionEnrollment("tenant-1", {
+        const result = await transitionEnrollment("507f1f77bcf86cd799439099", {
             studentId: "507f1f77bcf86cd799439001",
             academicYearId: "507f1f77bcf86cd799439022",
             classId: "507f1f77bcf86cd799439033",
@@ -149,6 +211,7 @@ test("transitionEnrollment closes current enrollment and creates next active enr
         (UserModel as any).findOne = originalUserFind;
         (EnrollmentModel as any).findOne = originalEnrollmentFind;
         (EnrollmentModel as any).create = originalEnrollmentCreate;
+        (EnrollmentAuditLogModel as any).create = originalAuditCreate;
     }
 });
 

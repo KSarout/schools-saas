@@ -3,10 +3,13 @@ import {
     type AssignEnrollmentPayload,
     type EnrollmentDto,
     EnrollmentDtoSchema,
+    type EnrollmentAuditListResponse,
+    EnrollmentAuditListResponseSchema,
     type EnrollmentHistoryResponse,
     EnrollmentHistoryResponseSchema,
     type EnrollmentListResponse,
     EnrollmentListResponseSchema,
+    type ListEnrollmentAuditParams,
     type ListEnrollmentsParams,
     type PromoteEnrollmentPayload,
     type TransitionEnrollmentResponse,
@@ -35,6 +38,22 @@ export async function getStudentEnrollmentHistory(studentId: string) {
     return apiGet<EnrollmentHistoryResponse>(
         `${BASE}/student/${studentId}/history`,
         EnrollmentHistoryResponseSchema
+    );
+}
+
+export async function listEnrollmentAuditLogs(params: ListEnrollmentAuditParams) {
+    const query = new URLSearchParams();
+    query.set("page", String(params.page));
+    query.set("limit", String(params.limit));
+    if (params.studentId) query.set("studentId", params.studentId);
+    if (params.action) query.set("action", params.action);
+    if (params.from) query.set("from", params.from);
+    if (params.to) query.set("to", params.to);
+
+    const suffix = query.toString();
+    return apiGet<EnrollmentAuditListResponse>(
+        `${BASE}/audit${suffix ? `?${suffix}` : ""}`,
+        EnrollmentAuditListResponseSchema
     );
 }
 

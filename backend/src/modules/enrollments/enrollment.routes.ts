@@ -8,6 +8,7 @@ import {
     assignStudentEnrollment,
     getStudentEnrollmentHistory,
     listEnrollments,
+    listEnrollmentAuditLogs,
     promoteStudentEnrollment,
     transferStudentEnrollment,
     withdrawStudentEnrollment,
@@ -24,6 +25,15 @@ const listQuerySchema = z.object({
     classId: objectIdSchema.optional(),
     sectionId: objectIdSchema.optional(),
     status: StatusSchema.optional(),
+});
+
+const auditListQuerySchema = z.object({
+    page: z.coerce.number().int().min(1).default(1),
+    limit: z.coerce.number().int().min(1).max(100).default(20),
+    studentId: objectIdSchema.optional(),
+    action: z.enum(["ASSIGN", "TRANSFER", "PROMOTE", "WITHDRAW"]).optional(),
+    from: z.coerce.date().optional(),
+    to: z.coerce.date().optional(),
 });
 
 const assignBodySchema = z.object({
@@ -68,7 +78,7 @@ function validateObjectId(value: string) {
 export const enrollmentRouter = Router();
 enrollmentRouter.use(schoolAuth);
 
-enrollmentRouter.get("/", requireRole("SCHOOL_ADMIN", "TEACHER", "ACCOUNTANT"), async (req, res) => {
+export async function listEnrollmentsHandler(req: any, res: any) {
     const parsed = listQuerySchema.safeParse(req.query);
     if (!parsed.success) return sendError(res, 400, "Invalid query params", parsed.error.issues);
 
@@ -79,26 +89,42 @@ enrollmentRouter.get("/", requireRole("SCHOOL_ADMIN", "TEACHER", "ACCOUNTANT"), 
         if (error?.status) return sendError(res, error.status, error.message || "Request failed");
         throw error;
     }
-});
+}
+enrollmentRouter.get("/", requireRole("SCHOOL_ADMIN", "TEACHER", "ACCOUNTANT"), listEnrollmentsHandler);
 
+export async function getStudentEnrollmentHistoryHandler(req: any, res: any) {
+    const studentId = String(req.params.studentId);
+    if (!validateObjectId(studentId)) return sendError(res, 400, "Invalid studentId");
+
+    try {
+        const items = await getStudentEnrollmentHistory(req.user!.tenantId, studentId);
+        return res.json({ items });
+    } catch (error: any) {
+        if (error?.status) return sendError(res, error.status, error.message || "Request failed");
+        throw error;
+    }
+}
 enrollmentRouter.get(
     "/student/:studentId/history",
     requireRole("SCHOOL_ADMIN", "TEACHER", "ACCOUNTANT"),
-    async (req, res) => {
-        const studentId = String(req.params.studentId);
-        if (!validateObjectId(studentId)) return sendError(res, 400, "Invalid studentId");
-
-        try {
-            const items = await getStudentEnrollmentHistory(req.user!.tenantId, studentId);
-            return res.json({ items });
-        } catch (error: any) {
-            if (error?.status) return sendError(res, error.status, error.message || "Request failed");
-            throw error;
-        }
-    }
+    getStudentEnrollmentHistoryHandler
 );
 
-enrollmentRouter.post("/assign", requireRole("SCHOOL_ADMIN"), async (req, res) => {
+export async function listEnrollmentAuditLogsHandler(req: any, res: any) {
+    const parsed = auditListQuerySchema.safeParse(req.query);
+    if (!parsed.success) return sendError(res, 400, "Invalid query params", parsed.error.issues);
+
+    try {
+        const result = await listEnrollmentAuditLogs(req.user!.tenantId, parsed.data, parsed.data.page, parsed.data.limit);
+        return res.json(result);
+    } catch (error: any) {
+        if (error?.status) return sendError(res, error.status, error.message || "Request failed");
+        throw error;
+    }
+}
+enrollmentRouter.get("/audit", requireRole("SCHOOL_ADMIN", "ACCOUNTANT"), listEnrollmentAuditLogsHandler);
+
+export async function assignEnrollmentHandler(req: any, res: any) {
     const parsed = assignBodySchema.safeParse(req.body);
     if (!parsed.success) return sendError(res, 400, "Invalid input", parsed.error.issues);
 
@@ -116,9 +142,10 @@ enrollmentRouter.post("/assign", requireRole("SCHOOL_ADMIN"), async (req, res) =
         }
         throw error;
     }
-});
+}
+enrollmentRouter.post("/assign", requireRole("SCHOOL_ADMIN"), assignEnrollmentHandler);
 
-enrollmentRouter.post("/transfer", requireRole("SCHOOL_ADMIN"), async (req, res) => {
+export async function transferEnrollmentHandler(req: any, res: any) {
     const parsed = transferBodySchema.safeParse(req.body);
     if (!parsed.success) return sendError(res, 400, "Invalid input", parsed.error.issues);
 
@@ -135,9 +162,10 @@ enrollmentRouter.post("/transfer", requireRole("SCHOOL_ADMIN"), async (req, res)
         }
         throw error;
     }
-});
+}
+enrollmentRouter.post("/transfer", requireRole("SCHOOL_ADMIN"), transferEnrollmentHandler);
 
-enrollmentRouter.post("/promote", requireRole("SCHOOL_ADMIN"), async (req, res) => {
+export async function promoteEnrollmentHandler(req: any, res: any) {
     const parsed = promoteBodySchema.safeParse(req.body);
     if (!parsed.success) return sendError(res, 400, "Invalid input", parsed.error.issues);
 
@@ -154,9 +182,10 @@ enrollmentRouter.post("/promote", requireRole("SCHOOL_ADMIN"), async (req, res) 
         }
         throw error;
     }
-});
+}
+enrollmentRouter.post("/promote", requireRole("SCHOOL_ADMIN"), promoteEnrollmentHandler);
 
-enrollmentRouter.post("/withdraw", requireRole("SCHOOL_ADMIN"), async (req, res) => {
+export async function withdrawEnrollmentHandler(req: any, res: any) {
     const parsed = withdrawBodySchema.safeParse(req.body);
     if (!parsed.success) return sendError(res, 400, "Invalid input", parsed.error.issues);
 
@@ -170,4 +199,5 @@ enrollmentRouter.post("/withdraw", requireRole("SCHOOL_ADMIN"), async (req, res)
         if (error?.status) return sendError(res, error.status, error.message || "Request failed");
         throw error;
     }
-});
+}
+enrollmentRouter.post("/withdraw", requireRole("SCHOOL_ADMIN"), withdrawEnrollmentHandler);

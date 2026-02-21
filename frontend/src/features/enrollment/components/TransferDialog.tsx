@@ -50,7 +50,12 @@ export function TransferDialog({
         [sections, toClassId]
     );
 
-    const canSubmit = !!enrollment && !!toClassId && !!toSectionId && !!effectiveDate && !submitting;
+    const sameTarget =
+        !!enrollment &&
+        toClassId === enrollment.class.id &&
+        toSectionId === enrollment.section.id;
+
+    const canSubmit = !!enrollment && !!toClassId && !!toSectionId && !!effectiveDate && !sameTarget && !submitting;
 
     async function submit() {
         if (!enrollment) return;
@@ -143,6 +148,11 @@ export function TransferDialog({
 
                     {(validationError || error) ? (
                         <p className="text-sm text-destructive">{validationError ?? error}</p>
+                    ) : null}
+                    {!validationError && !error && sameTarget ? (
+                        <p className="text-sm text-destructive">
+                            Transfer target must be different from current class/section.
+                        </p>
                     ) : null}
                 </div>
 

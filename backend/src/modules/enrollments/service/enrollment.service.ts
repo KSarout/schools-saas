@@ -8,6 +8,7 @@ import { StudentModel } from "../../students/model/student.model";
 import { UserModel } from "../../users/model/user.model";
 import { toEnrollmentDto } from "../dto/enrollment.dto";
 import { EnrollmentModel, type EnrollmentStatus } from "../model/enrollment.model";
+import { listEnrollmentAuditLogs as listEnrollmentAuditLogsService, logEnrollmentAuditAction } from "./enrollmentAudit.service";
 
 type TenantId = Types.ObjectId | string;
 
@@ -406,6 +407,8 @@ export async function getStudentEnrollmentHistory(tenantId: TenantId, studentId:
     }));
 }
 
+export const listEnrollmentAuditLogs = listEnrollmentAuditLogsService;
+
 export async function assignStudentEnrollment(tenantId: TenantId, payload: AssignEnrollmentPayload) {
     const normalizedTenantId = String(tenantId);
 
@@ -439,6 +442,20 @@ export async function assignStudentEnrollment(tenantId: TenantId, payload: Assig
             startDate: payload.startDate,
             note: payload.note?.trim() || undefined,
             createdBy: payload.actorUserId,
+        });
+
+        await logEnrollmentAuditAction({
+            tenantId: normalizedTenantId,
+            actorUserId: payload.actorUserId,
+            action: "ASSIGN",
+            studentId: payload.studentId,
+            to: {
+                academicYearId: payload.academicYearId,
+                classId: payload.classId,
+                sectionId: payload.sectionId,
+            },
+            effectiveDate: payload.startDate,
+            note: payload.note,
         });
 
         return toEnrollmentDto(created);
@@ -507,6 +524,26 @@ export async function transferStudentEnrollment(tenantId: TenantId, payload: Tra
             session,
         });
 
+        await logEnrollmentAuditAction({
+            tenantId: normalizedTenantId,
+            actorUserId: payload.actorUserId,
+            action: "TRANSFER",
+            studentId: payload.studentId,
+            from: {
+                academicYearId: payload.academicYearId,
+                classId: String(current.classId),
+                sectionId: String(current.sectionId),
+            },
+            to: {
+                academicYearId: payload.academicYearId,
+                classId: payload.toClassId,
+                sectionId: payload.toSectionId,
+            },
+            effectiveDate: payload.effectiveDate,
+            note: payload.note,
+            session,
+        });
+
         return {
             previousEnrollment: toEnrollmentDto(current),
             currentEnrollment: toEnrollmentDto(created),
@@ -572,6 +609,26 @@ export async function promoteStudentEnrollment(
             session,
         });
 
+        await logEnrollmentAuditAction({
+            tenantId: normalizedTenantId,
+            actorUserId: payload.actorUserId,
+            action: "PROMOTE",
+            studentId: payload.studentId,
+            from: {
+                academicYearId: payload.fromAcademicYearId,
+                classId: String(current.classId),
+                sectionId: String(current.sectionId),
+            },
+            to: {
+                academicYearId: payload.toAcademicYearId,
+                classId: payload.toClassId,
+                sectionId: payload.toSectionId,
+            },
+            effectiveDate: payload.effectiveDate,
+            note: payload.note,
+            session,
+        });
+
         return {
             previousEnrollment: toEnrollmentDto(current),
             currentEnrollment: toEnrollmentDto(created),
@@ -599,6 +656,20 @@ export async function withdrawStudentEnrollment(tenantId: TenantId, payload: Wit
     current.updatedBy = payload.actorUserId as any;
     if (payload.note?.trim()) current.note = payload.note.trim();
     await current.save();
+
+    await logEnrollmentAuditAction({
+        tenantId: normalizedTenantId,
+        actorUserId: payload.actorUserId,
+        action: "WITHDRAW",
+        studentId: payload.studentId,
+        from: {
+            academicYearId: payload.academicYearId,
+            classId: String(current.classId),
+            sectionId: String(current.sectionId),
+        },
+        effectiveDate: payload.effectiveDate,
+        note: payload.note,
+    });
 
     return toEnrollmentDto(current);
 }

@@ -54,7 +54,15 @@ export function PromoteDialog({
         [sections, toClassId]
     );
 
-    const canSubmit = !!enrollment && !!toAcademicYearId && !!toClassId && !!toSectionId && !!effectiveDate && !submitting;
+    const sameAcademicYear = !!enrollment && toAcademicYearId === enrollment.academicYear.id;
+    const canSubmit =
+        !!enrollment &&
+        !!toAcademicYearId &&
+        !!toClassId &&
+        !!toSectionId &&
+        !!effectiveDate &&
+        !sameAcademicYear &&
+        !submitting;
 
     async function submit() {
         if (!enrollment) return;
@@ -173,6 +181,11 @@ export function PromoteDialog({
 
                     {(validationError || error) ? (
                         <p className="text-sm text-destructive">{validationError ?? error}</p>
+                    ) : null}
+                    {!validationError && !error && sameAcademicYear ? (
+                        <p className="text-sm text-destructive">
+                            Target academic year must be different from current academic year.
+                        </p>
                     ) : null}
                 </div>
 

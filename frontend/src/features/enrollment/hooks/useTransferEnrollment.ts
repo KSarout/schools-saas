@@ -11,6 +11,7 @@ export function useTransferEnrollment() {
         onSuccess: async (_result, payload) => {
             await Promise.all([
                 queryClient.invalidateQueries({ queryKey: enrollmentKeys.all }),
+                queryClient.invalidateQueries({ queryKey: enrollmentKeys.audits() }),
                 queryClient.invalidateQueries({ queryKey: enrollmentKeys.history(payload.studentId) }),
             ]);
         },
