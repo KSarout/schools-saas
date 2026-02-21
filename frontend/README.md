@@ -16,6 +16,19 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## Test Commands
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+
+Current tests include basic safety coverage for:
+- School protected nested layouts (avoid duplicate shell/sidebar rendering)
+- Enrollment table RBAC action visibility guards
+- Student form strict placement + optional Student ID messaging
+
+Note: Current frontend checks are dependency-free smoke tests (source-level assertions) so they run in constrained environments.
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.

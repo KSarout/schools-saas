@@ -18,6 +18,7 @@ npm run dev
 ## Environment
 - Backend env contract: `backend/.env.example`
 - Runtime validation is enforced in `backend/src/core/config.ts` via Zod.
+- Frontend strict placement UI (optional): set `NEXT_PUBLIC_STUDENTS_REQUIRE_STRUCTURE_ON_CREATE=true` to visually require Academic Year/Class/Section in Student form.
 
 ## Quality checks
 ### Backend
@@ -48,6 +49,10 @@ npm run test
   - `backend/docs/feature-first-structure.md`
 - Users settings module:
   - `backend/docs/users-module.md`
+- Academic years/classes/sections foundation:
+  - `backend/docs/settings-structure-foundation.md`
+- Student structure migration:
+  - `backend/docs/students-structure-migration.md`
 - Deployment notes:
   - `backend/docs/deployment.md`
 - Production checklist:

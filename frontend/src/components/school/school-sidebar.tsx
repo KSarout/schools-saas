@@ -30,6 +30,7 @@ import {
     BarChart3,
     LogOut,
     ShieldCheck,
+    ClipboardList,
 } from "lucide-react"
 
 type MenuItem = {
@@ -107,10 +108,42 @@ const MENU: MenuItem[] = [
         match: "prefix",
     },
     {
+        label: "Academic Years",
+        labelKey: "school.settings.academicYears.pageTitle",
+        href: (l) => `/${l}/school/settings/academic-years`,
+        icon: BookOpen,
+        roles: ["SCHOOL_ADMIN", "ACCOUNTANT", "TEACHER"],
+        match: "prefix",
+    },
+    {
+        label: "Classes Settings",
+        labelKey: "school.settings.classes.pageTitle",
+        href: (l) => `/${l}/school/settings/classes`,
+        icon: GraduationCap,
+        roles: ["SCHOOL_ADMIN", "ACCOUNTANT", "TEACHER"],
+        match: "prefix",
+    },
+    {
+        label: "Sections",
+        labelKey: "school.settings.sections.pageTitle",
+        href: (l) => `/${l}/school/settings/sections`,
+        icon: ClipboardCheck,
+        roles: ["SCHOOL_ADMIN", "ACCOUNTANT", "TEACHER"],
+        match: "prefix",
+    },
+    {
         label: "Users",
         labelKey: "school.users.pageTitle",
         href: (l) => `/${l}/school/settings/users`,
         icon: ShieldCheck,
+        roles: ["SCHOOL_ADMIN", "ACCOUNTANT", "TEACHER"],
+        match: "prefix",
+    },
+    {
+        label: "Enrollment",
+        labelKey: "school.enrollment.pageTitle",
+        href: (l) => `/${l}/school/enrollment`,
+        icon: ClipboardList,
         roles: ["SCHOOL_ADMIN", "ACCOUNTANT", "TEACHER"],
         match: "prefix",
     },

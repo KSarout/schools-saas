@@ -13,6 +13,10 @@ import { superAdminRouter } from "./modules/super-admin/routes/superAdmin.routes
 import {studentRouter} from "./modules/students/routes/student.routes";
 import { userRouter } from "./modules/users/user.routes";
 import { requestContext } from "./middlewares/requestContext";
+import { academicYearRouter } from "./modules/academic-years/academic-year.routes";
+import { classRouter } from "./modules/classes/class.routes";
+import { sectionRouter } from "./modules/sections/section.routes";
+import { enrollmentRouter } from "./modules/enrollments/enrollment.routes";
 
 const globalLimiter = rateLimit({
     windowMs: config.rateLimitWindowMs,
@@ -95,6 +99,10 @@ async function bootstrap() {
     app.use("/super-admin", superAdminRouter);
     app.use("/students", studentRouter);
     app.use("/users", userRouter);
+    app.use("/academic-years", academicYearRouter);
+    app.use("/classes", classRouter);
+    app.use("/sections", sectionRouter);
+    app.use("/api/school/enrollments", enrollmentRouter);
 
     app.use(errorHandler);
 

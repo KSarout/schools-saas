@@ -13,6 +13,9 @@ export const StudentSchema = z.object({
     dateOfBirth: z.string().optional(),
     grade: z.string(),
     section: z.string(),
+    academicYearId: z.string().optional(),
+    classId: z.string().optional(),
+    sectionId: z.string().optional(),
     parentName: z.string().optional(),
     parentPhone: z.string().optional(),
     address: z.string().optional(),
@@ -24,13 +27,16 @@ export const StudentListResponseSchema = listResponseSchema(StudentSchema);
 export type StudentListResponse = z.infer<typeof StudentListResponseSchema>;
 
 export const StudentCreateInputSchema = z.object({
-    studentId: z.string().min(1),
+    studentId: z.string().optional(),
     firstName: z.string().min(1),
     lastName: z.string().min(1),
     gender: z.enum(StudentGender),
     dateOfBirth: z.string().optional(),
     grade: z.string().min(1),
     section: z.string().min(1),
+    academicYearId: z.string().optional(),
+    classId: z.string().optional(),
+    sectionId: z.string().optional(),
     parentName: z.string().optional(),
     parentPhone: z.string().optional(),
     address: z.string().optional(),

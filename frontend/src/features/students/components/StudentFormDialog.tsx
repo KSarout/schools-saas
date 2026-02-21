@@ -25,6 +25,10 @@ type Props = {
     initial?: Partial<StudentDto>
     submitting?: boolean
     error?: string | null
+    academicYearOptions?: Array<{ id: string; name: string; code: string }>
+    classOptions?: Array<{ id: string; name: string; code: string; academicYearId: string }>
+    sectionOptions?: Array<{ id: string; name: string; code: string; classId: string }>
+    strictPlacementRequired?: boolean
     onSubmit: (input: StudentCreateInput) => Promise<void> | void
 }
 
@@ -38,6 +42,9 @@ type StudentFormState = {
     dateOfBirth: string;
     grade: string;
     section: string;
+    academicYearId: string;
+    classId: string;
+    sectionId: string;
     parentName: string;
     parentPhone: string;
     address: string;
@@ -52,6 +59,9 @@ function formStateFromInitial(initial?: Partial<StudentDto>): StudentFormState {
         dateOfBirth: initial?.dateOfBirth ? initial.dateOfBirth.slice(0, 10) : "",
         grade: initial?.grade ?? "",
         section: initial?.section ?? "",
+        academicYearId: initial?.academicYearId ?? "NONE",
+        classId: initial?.classId ?? "NONE",
+        sectionId: initial?.sectionId ?? "NONE",
         parentName: initial?.parentName ?? "",
         parentPhone: initial?.parentPhone ?? "",
         address: initial?.address ?? "",
@@ -59,16 +69,37 @@ function formStateFromInitial(initial?: Partial<StudentDto>): StudentFormState {
 }
 
 export function StudentFormDialog({
-                                      open,
-                                      onOpenChange,
-                                      title,
-                                      submitLabel,
-                                      initial,
-                                      submitting,
-                                      error,
-                                      onSubmit,
-                                  }: Props) {
+    open,
+    onOpenChange,
+    title,
+    submitLabel,
+    initial,
+    submitting,
+    error,
+    academicYearOptions = [],
+    classOptions = [],
+    sectionOptions = [],
+    strictPlacementRequired = false,
+    onSubmit,
+}: Props) {
     const [form, setForm] = useState<StudentFormState>(() => formStateFromInitial(initial))
+
+    const filteredClasses = useMemo(() => {
+        if (form.academicYearId === "NONE") return [];
+        return classOptions.filter((item) => item.academicYearId === form.academicYearId);
+    }, [classOptions, form.academicYearId]);
+
+    const filteredSections = useMemo(() => {
+        if (form.classId === "NONE") return [];
+        return sectionOptions.filter((item) => item.classId === form.classId);
+    }, [sectionOptions, form.classId]);
+
+    const selectedSection = useMemo(
+        () => filteredSections.find((item) => item.id === form.sectionId),
+        [filteredSections, form.sectionId]
+    );
+
+    const resolvedSectionLabel = selectedSection?.name?.trim() || form.section.trim();
 
     const payload = useMemo(
         () => ({
@@ -79,17 +110,28 @@ export function StudentFormDialog({
             gender: form.gender,
             dateOfBirth: form.dateOfBirth ? form.dateOfBirth : undefined,
             grade: form.grade.trim(),
-            section: form.section.trim(),
+            section: resolvedSectionLabel,
+            academicYearId: form.academicYearId === "NONE" ? undefined : form.academicYearId,
+            classId: form.classId === "NONE" ? undefined : form.classId,
+            sectionId: form.sectionId === "NONE" ? undefined : form.sectionId,
             parentName: form.parentName.trim() || undefined,
             parentPhone: form.parentPhone.trim() || undefined,
             address: form.address.trim() || undefined,
         }),
-        [form]
+        [form, resolvedSectionLabel]
     )
 
+    const placementComplete =
+        form.academicYearId !== "NONE" &&
+        form.classId !== "NONE" &&
+        form.sectionId !== "NONE";
+
     const canSubmit = useMemo(() => {
-        return StudentCreateInputSchema.safeParse(payload).success && !submitting
-    }, [payload, submitting])
+        const baseValid = StudentCreateInputSchema.safeParse(payload).success;
+        if (!baseValid || submitting) return false;
+        if (strictPlacementRequired && !placementComplete) return false;
+        return true;
+    }, [payload, strictPlacementRequired, placementComplete, submitting])
 
     const handleSubmit = useCallback(async () => {
         const parsed = StudentCreateInputSchema.safeParse(payload)
@@ -116,7 +158,6 @@ export function StudentFormDialog({
                 </DialogHeader>
 
                 <div className="space-y-6">
-                    {/* Student info */}
                     <section className="space-y-4">
                         <div className="text-sm font-medium">Student information</div>
                         <div className="grid gap-4 sm:grid-cols-2">
@@ -125,10 +166,10 @@ export function StudentFormDialog({
                                 <Input
                                     value={form.studentId}
                                     onChange={(e) => setForm((prev) => ({ ...prev, studentId: e.target.value }))}
-                                    placeholder="Optional: school internal ID (not STU code)"
+                                    placeholder="Optional: leave blank to auto-use generated STU code"
                                 />
                                 <p className="text-xs text-muted-foreground">
-                                    System will generate a code like <span className="font-mono">STU-2026-000123</span>.
+                                    System always generates a code like <span className="font-mono">STU-2026-000123</span>. If this field is empty, Student ID will use that generated code.
                                 </p>
                             </div>
 
@@ -167,7 +208,6 @@ export function StudentFormDialog({
 
                     <Separator />
 
-                    {/* Academic */}
                     <section className="space-y-4">
                         <div className="text-sm font-medium">Academic</div>
                         <div className="grid gap-4 sm:grid-cols-2">
@@ -175,17 +215,97 @@ export function StudentFormDialog({
                                 <Label>Grade</Label>
                                 <Input value={form.grade} onChange={(e) => setForm((prev) => ({ ...prev, grade: e.target.value }))} placeholder="e.g. Grade 6" />
                             </div>
+                        </div>
+
+                        <div className="grid gap-4 sm:grid-cols-3">
+                            <div className="space-y-2">
+                                <Label>Academic Year {strictPlacementRequired ? <span className="text-destructive">*</span> : <span className="text-muted-foreground">(Optional)</span>}</Label>
+                                <Select
+                                    value={form.academicYearId}
+                                    onValueChange={(value) => {
+                                        setForm((prev) => ({
+                                            ...prev,
+                                            academicYearId: value,
+                                            classId: "NONE",
+                                            sectionId: "NONE",
+                                        }));
+                                    }}
+                                >
+                                    <SelectTrigger><SelectValue placeholder="Select academic year" /></SelectTrigger>
+                                    <SelectContent>
+                                        {!strictPlacementRequired ? <SelectItem value="NONE">None</SelectItem> : null}
+                                        {academicYearOptions.map((item) => (
+                                            <SelectItem key={item.id} value={item.id}>{item.name} ({item.code})</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                {academicYearOptions.length === 0 ? (
+                                    <p className="text-xs text-muted-foreground">
+                                        No academic years found in Settings.
+                                    </p>
+                                ) : null}
+                            </div>
 
                             <div className="space-y-2">
-                                <Label>Section</Label>
-                                <Input value={form.section} onChange={(e) => setForm((prev) => ({ ...prev, section: e.target.value }))} placeholder="e.g. A" />
+                                <Label>Class {strictPlacementRequired ? <span className="text-destructive">*</span> : <span className="text-muted-foreground">(Optional)</span>}</Label>
+                                <Select
+                                    value={form.classId}
+                                    onValueChange={(value) => {
+                                        setForm((prev) => ({ ...prev, classId: value, sectionId: "NONE" }));
+                                    }}
+                                >
+                                    <SelectTrigger><SelectValue placeholder="Select class" /></SelectTrigger>
+                                    <SelectContent>
+                                        {!strictPlacementRequired ? <SelectItem value="NONE">None</SelectItem> : null}
+                                        {filteredClasses.map((item) => (
+                                            <SelectItem key={item.id} value={item.id}>{item.name} ({item.code})</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                {form.academicYearId !== "NONE" && filteredClasses.length === 0 ? (
+                                    <p className="text-xs text-muted-foreground">
+                                        No classes found for selected academic year.
+                                    </p>
+                                ) : null}
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>Section {strictPlacementRequired ? <span className="text-destructive">*</span> : <span className="text-muted-foreground">(Optional)</span>}</Label>
+                                <Select value={form.sectionId} onValueChange={(value) => setForm((prev) => ({ ...prev, sectionId: value }))}>
+                                    <SelectTrigger><SelectValue placeholder="Select section" /></SelectTrigger>
+                                    <SelectContent>
+                                        {!strictPlacementRequired ? <SelectItem value="NONE">None</SelectItem> : null}
+                                        {filteredSections.map((item) => (
+                                            <SelectItem key={item.id} value={item.id}>{item.name} ({item.code})</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                {form.classId !== "NONE" && filteredSections.length === 0 ? (
+                                    <p className="text-xs text-muted-foreground">
+                                        No sections found for selected class.
+                                    </p>
+                                ) : null}
+                                {form.sectionId === "NONE" && !strictPlacementRequired ? (
+                                    <div className="space-y-2">
+                                        <Label className="text-xs text-muted-foreground">Section label (manual)</Label>
+                                        <Input
+                                            value={form.section}
+                                            onChange={(e) => setForm((prev) => ({ ...prev, section: e.target.value }))}
+                                            placeholder="e.g. A"
+                                        />
+                                    </div>
+                                ) : null}
                             </div>
                         </div>
+                        {strictPlacementRequired && !placementComplete ? (
+                            <p className="text-xs text-destructive">
+                                Academic Year, Class, and Section are required before saving.
+                            </p>
+                        ) : null}
                     </section>
 
                     <Separator />
 
-                    {/* Parent/Guardian */}
                     <section className="space-y-4">
                         <div className="flex items-center justify-between">
                             <div className="text-sm font-medium">Parent / Guardian</div>
@@ -214,7 +334,6 @@ export function StudentFormDialog({
                         </div>
                     </section>
 
-                    {/* Error */}
                     {error ? (
                         <div className="flex items-start gap-3 rounded-xl bg-destructive/10 p-3 text-sm text-destructive ring-1 ring-destructive/20">
                             <AlertTriangle className="mt-0.5 h-4 w-4" />

@@ -9,10 +9,12 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "seed:admin": "ts-node-dev --transpile-only src/seedSuperAdmin.ts",
+    "migrate:students:placement": "ts-node-dev --transpile-only src/scripts/migrations/backfillStudentPlacement.ts",
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "test": "npm run clean && npm run build && node --test $(find dist -name \"*.test.js\")",
-    "ci:check": "npm run lint && npm run typecheck && npm run test"
+    "ci:check": "npm run lint && npm run typecheck && npm run test",
+    "seed:tenant:enrollment-demo": "ts-node-dev --transpile-only src/scripts/seedTenantEnrollmentDemo.ts"
   },
   "keywords": [],
   "author": "",

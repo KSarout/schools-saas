@@ -9,15 +9,26 @@ import { StudentModel, type Student, type StudentStatus } from "../model/student
 
 type TenantId = Types.ObjectId | string;
 
-type StudentCreateInput = Omit<
-    Student,
-    "tenantId" | "createdAt" | "updatedAt" |
-    "firstNameSearch" | "lastNameSearch" |
-    "studentCodeSearch" | "studentIdSearch" | "parentPhoneSearch"
->;
+type StudentCreateInput = {
+    studentCode: string;
+    studentId: string;
+    firstName: string;
+    lastName: string;
+    gender: Student["gender"];
+    dateOfBirth?: Date;
+    grade: string;
+    section: string;
+    academicYearId?: Types.ObjectId | string;
+    classId?: Types.ObjectId | string;
+    sectionId?: Types.ObjectId | string;
+    parentName?: string;
+    parentPhone?: string;
+    address?: string;
+    status: StudentStatus;
+};
 
 export function createStudentForTenant(tenantId: TenantId, data: StudentCreateInput) {
-    return tenantCreate(StudentModel, data, { tenantId });
+    return tenantCreate(StudentModel, data as any, { tenantId });
 }
 
 export function listStudentsForTenant(

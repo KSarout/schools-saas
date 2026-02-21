@@ -18,6 +18,9 @@ export type Student = {
 
     grade: string;
     section: string;
+    academicYearId?: Types.ObjectId;
+    classId?: Types.ObjectId;
+    sectionId?: Types.ObjectId;
 
     parentName?: string;
     parentPhone?: string;
@@ -51,6 +54,9 @@ const StudentSchema = new Schema<Student>(
 
         grade: {type: String, required: true, trim: true},
         section: {type: String, required: true, trim: true},
+        academicYearId: {type: Schema.Types.ObjectId, ref: "AcademicYear"},
+        classId: {type: Schema.Types.ObjectId, ref: "SchoolClass"},
+        sectionId: {type: Schema.Types.ObjectId, ref: "Section"},
 
         parentName: {type: String, trim: true},
         parentPhone: {type: String, trim: true},
@@ -87,6 +93,9 @@ StudentSchema.index({tenantId: 1, studentIdSearch: 1});
 StudentSchema.index({tenantId: 1, firstNameSearch: 1});
 StudentSchema.index({tenantId: 1, lastNameSearch: 1});
 StudentSchema.index({tenantId: 1, parentPhoneSearch: 1});
+StudentSchema.index({tenantId: 1, academicYearId: 1});
+StudentSchema.index({tenantId: 1, classId: 1});
+StudentSchema.index({tenantId: 1, sectionId: 1});
 StudentSchema.plugin(mongooseTenantPlugin);
 
 export const StudentModel = model<Student>("Student", StudentSchema);

@@ -13,6 +13,8 @@ import {
 import { sendError, sendList, sendOk } from "../../../core/apiResponse";
 import { buildStudentListFilter, studentListSort } from "../service/student.search";
 import { toStudentDto } from "../dto/student.dto";
+import { validateStudentPlacement } from "../service/studentPlacement";
+import { config } from "../../../core/config";
 
 export const studentRouter = Router();
 
@@ -20,6 +22,13 @@ studentRouter.use(schoolAuth);
 
 const GenderSchema = z.enum(["MALE", "FEMALE"]);
 const StatusSchema = z.enum(["ACTIVE", "INACTIVE"]);
+const ObjectIdSchema = z.string().regex(/^[a-f\d]{24}$/i, "Invalid ObjectId");
+
+function toOptionalId(value: unknown): string | null {
+    if (value == null) return null;
+    if (typeof (value as any).toString === "function") return (value as any).toString();
+    return String(value);
+}
 
 /*
 |--------------------------------------------------------------------------
@@ -31,13 +40,16 @@ studentRouter.post(
     requireSchoolPermission("students.create"),
     async (req, res) => {
         const schema = z.object({
-            studentId: z.string().min(1),
+            studentId: z.string().optional(),
             firstName: z.string().min(1),
             lastName: z.string().min(1),
             gender: GenderSchema,
             dateOfBirth: z.string().optional(),
             grade: z.string().min(1),
             section: z.string().min(1),
+            academicYearId: ObjectIdSchema.optional(),
+            classId: ObjectIdSchema.optional(),
+            sectionId: ObjectIdSchema.optional(),
             parentName: z.string().optional(),
             parentPhone: z.string().optional(),
             address: z.string().optional(),
@@ -46,7 +58,18 @@ studentRouter.post(
         const parsed = schema.safeParse(req.body);
         if (!parsed.success) return sendError(res, 400, "Invalid input", parsed.error.issues);
 
+        if (config.studentsRequireStructureOnCreate) {
+            if (!parsed.data.academicYearId || !parsed.data.classId || !parsed.data.sectionId) {
+                return sendError(res, 400, "academicYearId, classId, and sectionId are required");
+            }
+        }
+
         const tenantId = req.user!.tenantId;
+        await validateStudentPlacement(tenantId, {
+            academicYearId: parsed.data.academicYearId,
+            classId: parsed.data.classId,
+            sectionId: parsed.data.sectionId,
+        });
 
         const year = new Date().getFullYear();
         const counterKey = `STUDENT:${year}`;
@@ -59,13 +82,16 @@ studentRouter.post(
             try {
                 const created = await createStudentForTenant(tenantId, {
                     studentCode,
-                    studentId: parsed.data.studentId.trim(),
+                    studentId: parsed.data.studentId?.trim() || studentCode,
                     firstName: parsed.data.firstName.trim(),
                     lastName: parsed.data.lastName.trim(),
                     gender: parsed.data.gender,
                     dateOfBirth: parsed.data.dateOfBirth ? new Date(parsed.data.dateOfBirth) : undefined,
                     grade: parsed.data.grade.trim(),
                     section: parsed.data.section.trim(),
+                    academicYearId: parsed.data.academicYearId,
+                    classId: parsed.data.classId,
+                    sectionId: parsed.data.sectionId,
                     parentName: parsed.data.parentName?.trim() || undefined,
                     parentPhone: parsed.data.parentPhone?.trim() || undefined,
                     address: parsed.data.address?.trim() || undefined,
@@ -161,6 +187,9 @@ studentRouter.patch(
                 dateOfBirth: z.string().optional(),
                 grade: z.string().optional(),
                 section: z.string().optional(),
+                academicYearId: z.union([ObjectIdSchema, z.null()]).optional(),
+                classId: z.union([ObjectIdSchema, z.null()]).optional(),
+                sectionId: z.union([ObjectIdSchema, z.null()]).optional(),
                 parentName: z.string().optional(),
                 parentPhone: z.string().optional(),
                 address: z.string().optional(),
@@ -179,12 +208,27 @@ studentRouter.patch(
 
         const data = parsed.data;
 
+        if (
+            data.academicYearId !== undefined ||
+            data.classId !== undefined ||
+            data.sectionId !== undefined
+        ) {
+            await validateStudentPlacement(tenantId, {
+                academicYearId: data.academicYearId === undefined ? toOptionalId(student.academicYearId) : data.academicYearId,
+                classId: data.classId === undefined ? toOptionalId(student.classId) : data.classId,
+                sectionId: data.sectionId === undefined ? toOptionalId(student.sectionId) : data.sectionId,
+            });
+        }
+
         if (data.studentId !== undefined) student.studentId = data.studentId.trim();
         if (data.firstName !== undefined) student.firstName = data.firstName.trim();
         if (data.lastName !== undefined) student.lastName = data.lastName.trim();
         if (data.gender !== undefined) student.gender = data.gender;
         if (data.grade !== undefined) student.grade = data.grade.trim();
         if (data.section !== undefined) student.section = data.section.trim();
+        if (data.academicYearId !== undefined) student.academicYearId = (data.academicYearId || undefined) as any;
+        if (data.classId !== undefined) student.classId = (data.classId || undefined) as any;
+        if (data.sectionId !== undefined) student.sectionId = (data.sectionId || undefined) as any;
         if (data.status !== undefined) student.status = data.status;
 
         if (data.parentName !== undefined) student.parentName = data.parentName.trim() || undefined;

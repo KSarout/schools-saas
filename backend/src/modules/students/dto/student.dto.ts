@@ -16,6 +16,24 @@ export function toStudentDto(s: StudentLike) {
         dateOfBirth: s.dateOfBirth ? new Date(s.dateOfBirth).toISOString() : undefined,
         grade: s.grade,
         section: s.section,
+        academicYearId:
+            s.academicYearId == null
+                ? undefined
+                : typeof s.academicYearId?.toString === "function"
+                  ? s.academicYearId.toString()
+                  : String(s.academicYearId),
+        classId:
+            s.classId == null
+                ? undefined
+                : typeof s.classId?.toString === "function"
+                  ? s.classId.toString()
+                  : String(s.classId),
+        sectionId:
+            s.sectionId == null
+                ? undefined
+                : typeof s.sectionId?.toString === "function"
+                  ? s.sectionId.toString()
+                  : String(s.sectionId),
         parentName: s.parentName ?? undefined,
         parentPhone: s.parentPhone ?? undefined,
         address: s.address ?? undefined,

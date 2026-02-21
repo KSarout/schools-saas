@@ -26,6 +26,7 @@ const EnvSchema = z.object({
     JWT_SUPER_ADMIN_AUDIENCE: z.string().min(1).optional(),
     ACCESS_TOKEN_EXPIRES: z.string().regex(/^\d+([smhd])?$/).optional(),
     REFRESH_TOKEN_EXPIRES: z.string().regex(/^\d+([smhd])?$/).optional(),
+    STUDENTS_REQUIRE_STRUCTURE_ON_CREATE: z.enum(["true", "false"]).optional(),
 });
 
 function parseJwtExpires(value: string | undefined, fallback: JwtExpiresIn): JwtExpiresIn {
@@ -75,4 +76,5 @@ export const config = {
     accessTokenExpires: parseJwtExpires(env.ACCESS_TOKEN_EXPIRES, "15m"),
 
     refreshTokenExpires: parseJwtExpires(env.REFRESH_TOKEN_EXPIRES, "7d"),
+    studentsRequireStructureOnCreate: parseBoolean(env.STUDENTS_REQUIRE_STRUCTURE_ON_CREATE, false),
 };

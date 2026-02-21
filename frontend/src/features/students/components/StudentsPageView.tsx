@@ -28,6 +28,9 @@ import {
 
 import {useSchoolMe} from "@/features/school-auth/hooks/useSchoolAuth"
 import {can, SchoolPermissions} from "@/features/school-auth/rbac/schoolRbac"
+import { useAcademicYearsList } from "@/features/academic-years/hooks/useAcademicYears"
+import { useClassesList } from "@/features/classes/hooks/useClasses"
+import { useSectionsList } from "@/features/sections/hooks/useSections"
 
 
 import {
@@ -54,6 +57,8 @@ export default function StudentsPageView() {
 
     const [sortKey, setSortKey] = useState<SortKey>("studentId")
     const [sortDir, setSortDir] = useState<SortDir>("asc")
+    const strictPlacementEnv = process.env.NEXT_PUBLIC_STUDENTS_REQUIRE_STRUCTURE_ON_CREATE === "true"
+    const [strictPlacementRequired, setStrictPlacementRequired] = useState(strictPlacementEnv)
 
     // debounce search
     useEffect(() => {
@@ -75,6 +80,9 @@ export default function StudentsPageView() {
     const createMut = useCreateStudent()
     const updateMut = useUpdateStudent()
     const deleteMut = useDeleteStudent()
+    const academicYearsQuery = useAcademicYearsList({ page: 1, limit: 50 })
+    const classesQuery = useClassesList({ page: 1, limit: 50 })
+    const sectionsQuery = useSectionsList({ page: 1, limit: 50 })
 
     const totalPages = list.data?.totalPages ?? 1
 
@@ -97,8 +105,12 @@ export default function StudentsPageView() {
                 description: "The student record has been added successfully."
             });
         } catch (err) {
+            const message = (err as Error).message || ""
+            if (message.includes("academicYearId, classId, and sectionId are required")) {
+                setStrictPlacementRequired(true)
+            }
             toast("Create failed", {
-                description: (err as Error).message,
+                description: message,
             })
         }
     }
@@ -143,6 +155,30 @@ export default function StudentsPageView() {
     }
 
     const rows = useMemo(() => list.data?.items ?? [], [list.data?.items])
+    const academicYearOptions = useMemo(
+        () => (academicYearsQuery.data?.items ?? []).map((item) => ({ id: item.id, name: item.name, code: item.code })),
+        [academicYearsQuery.data?.items]
+    )
+    const classOptions = useMemo(
+        () =>
+            (classesQuery.data?.items ?? []).map((item) => ({
+                id: item.id,
+                name: item.name,
+                code: item.code,
+                academicYearId: item.academicYearId,
+            })),
+        [classesQuery.data?.items]
+    )
+    const sectionOptions = useMemo(
+        () =>
+            (sectionsQuery.data?.items ?? []).map((item) => ({
+                id: item.id,
+                name: item.name,
+                code: item.code,
+                classId: item.classId,
+            })),
+        [sectionsQuery.data?.items]
+    )
 
     // client-side sorting (works nicely even if backend doesn't support sorting yet)
     const sortedRows = useMemo(() => {
@@ -385,13 +421,17 @@ export default function StudentsPageView() {
             {/* Create */}
             {canManage && createOpen && (
                 <StudentFormDialog
-                    key="create-student"
+                    key={`create-student-${createOpen ? "open" : "closed"}-${strictPlacementRequired ? "strict" : "relaxed"}`}
                     open={createOpen}
                     onOpenChange={setCreateOpen}
                     title="Add student"
                     submitLabel="Create"
                     submitting={createMut.isPending}
                     error={createError}
+                    academicYearOptions={academicYearOptions}
+                    classOptions={classOptions}
+                    sectionOptions={sectionOptions}
+                    strictPlacementRequired={strictPlacementRequired}
                     onSubmit={onCreate}
                 />
             )}
@@ -399,7 +439,7 @@ export default function StudentsPageView() {
             {/* Edit */}
             {canManage && editOpen && (
                 <StudentFormDialog
-                    key={`edit-student-${active?.id ?? "none"}`}
+                    key={`edit-student-${active?.id ?? "none"}-${editOpen ? "open" : "closed"}-${strictPlacementRequired ? "strict" : "relaxed"}`}
                     open={editOpen}
                     onOpenChange={setEditOpen}
                     title="Edit student"
@@ -407,6 +447,10 @@ export default function StudentsPageView() {
                     initial={active ?? undefined}
                     submitting={updateMut.isPending}
                     error={updateError}
+                    academicYearOptions={academicYearOptions}
+                    classOptions={classOptions}
+                    sectionOptions={sectionOptions}
+                    strictPlacementRequired={strictPlacementRequired}
                     onSubmit={onEdit}
                 />
             )}

@@ -75,6 +75,7 @@ import {useState} from "react"
 import {useSchoolMe} from "@/features/school-auth/hooks/useSchoolAuth"
 import {can, SchoolPermissions} from "@/features/school-auth/rbac/schoolRbac"
 import {useStudentDetail} from "@/features/students/hooks/useStudents"
+import { StudentEnrollmentHistory } from "@/features/enrollment/components/StudentEnrollmentHistory"
 
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card"
 import {Badge} from "@/components/ui/badge"
@@ -155,6 +156,7 @@ export default function StudentDetailsPage() {
                     <TabsTrigger value="overview">Overview</TabsTrigger>
                     <TabsTrigger value="guardian">Guardian</TabsTrigger>
                     <TabsTrigger value="academic">Academic</TabsTrigger>
+                    <TabsTrigger value="enrollment">Enrollment History</TabsTrigger>
                     <TabsTrigger value="activity">Activity</TabsTrigger>
                 </TabsList>
 
@@ -220,6 +222,16 @@ export default function StudentDetailsPage() {
                             <InfoItem label="Section">{s.section}</InfoItem>
                         </CardContent>
                     </Card>
+                </TabsContent>
+
+                {/* Activity */}
+                <TabsContent value="enrollment">
+                    <StudentEnrollmentHistory
+                        studentId={s.id}
+                        studentName={`${s.firstName} ${s.lastName}`.trim()}
+                        studentCode={s.studentId}
+                        canManage={canManage}
+                    />
                 </TabsContent>
 
                 {/* Activity */}
